@@ -1,22 +1,36 @@
 import type Conf from 'conf'
-import { parseSetCookie, splitSetCookieString } from 'cookie-es'
+import { parseSetCookie, type SetCookie, splitSetCookieString } from 'cookie-es'
 import defaultKy, { type KyInstance } from 'ky'
 
 import type {
+  EntitySearchResult,
   ExperienceItem,
   LinkedInMetadata,
+  OrganizationResponse,
   ProfileContactInfo,
   ProfileSkills,
   ProfileView,
+  SearchCompaniesParams,
+  SearchCompaniesResponse,
+  SearchParams,
+  SearchPeopleParams,
+  SearchPeopleResponse,
+  SearchResponse,
   SelfProfile,
   VectorImage
 } from './types'
 import { assert } from './assert'
-import { encodeCookies, getConfigForUser, getEnv, getIdFromUrn } from './utils'
+import {
+  encodeCookies,
+  getConfigForUser,
+  getEnv,
+  getIdFromUrn,
+  getUrnFromRawUpdate
+} from './utils'
 
 export class LinkedInClient {
-  // max seems to be 100 posts per page
-  static readonly MAX_POST_COUNT = 100
+  // max seems to be 100 posts per page (currently unused)
+  // static readonly MAX_POST_COUNT = 100
 
   // max seems to be 100
   static readonly MAX_UPDATE_COUNT = 100
@@ -33,7 +47,7 @@ export class LinkedInClient {
 
   protected authKy: KyInstance
   protected apiKy: KyInstance
-  protected _cookies: Record<string, string> = {}
+
   protected _sessionId?: string
   protected _metadata?: LinkedInMetadata
   protected _authenticated = false
@@ -91,6 +105,26 @@ export class LinkedInClient {
         'x-li-lang': 'en_US',
         'x-restli-protocol-version': '2.0.0',
         ...apiHeaders
+      },
+      redirect: 'error',
+      hooks: {
+        beforeError: [
+          async (error) => {
+            const { request, response } = error
+
+            if (!request || !response?.status) {
+              return error
+            }
+
+            console.warn(
+              'ky error',
+              request.url,
+              response.status,
+              response.headers
+            )
+            return error
+          }
+        ]
       }
     })
   }
@@ -104,11 +138,18 @@ export class LinkedInClient {
 
     const setCookies = this.config.get('cookies') as string
     if (setCookies) {
-      // TODO: check if cookies are still valid
-      this._setAuthCookies(setCookies)
-      this._authenticated = true
+      try {
+        this._setAuthCookies(setCookies)
+        this._authenticated = true
+      } catch (err: any) {
+        console.warn(
+          'LinkedInClient renewing expired auth cookies',
+          err.message
+        )
+        return this.authenticate()
+      }
     } else {
-      await this.authenticate()
+      return this.authenticate()
     }
   }
 
@@ -127,36 +168,44 @@ export class LinkedInClient {
     )
 
     const setCookies = splitSetCookieString(setCookiesString)
+    const parsedCookies = setCookies.map((c) => parseSetCookie(c))
+
     // eslint-disable-next-line unicorn/no-array-reduce
-    this._cookies = setCookies.reduce(
+    const cookies = parsedCookies.reduce(
       (acc, c) => {
-        const parsed = parseSetCookie(c)
         return {
           ...acc,
-          [parsed.name]: parsed.value
+          [c.name]: c
         }
       },
-      {} as Record<string, string>
+      {} as Record<string, SetCookie>
     )
 
-    const sessionId = this._cookies.JSESSIONID!
-    assert(sessionId, 'LinkedInClient authenticate missing JSESSIONID cookie')
-    this._sessionId = sessionId
-    const csrfToken = sessionId.replaceAll('"', '')
+    const sessionCookie = cookies.JSESSIONID
+    assert(sessionCookie, 'LinkedInClient session missing JSESSIONID cookie')
+
+    if (sessionCookie.expires && Date.now() > sessionCookie.expires.getTime()) {
+      throw new Error('LinkedInClient auth cookie expired')
+    }
+
+    this._sessionId = sessionCookie.value
+    const csrfToken = this._sessionId.replaceAll('"', '')
 
     this.authKy = this.authKy.extend({
       headers: {
         'csrf-token': csrfToken,
-        cookie: encodeCookies(this._cookies)
+        cookie: encodeCookies(cookies)
       }
     })
 
     this.apiKy = this.apiKy.extend({
       headers: {
         'csrf-token': csrfToken,
-        cookie: encodeCookies(this._cookies)
+        cookie: encodeCookies(cookies)
       }
     })
+
+    return cookies
   }
 
   async authenticate() {
@@ -222,8 +271,7 @@ export class LinkedInClient {
   async getProfile(id: string) {
     await this.ensureAuthenticated()
 
-    // NOTE: this still works for now, but will probably eventually have to be converted to
-    // https://www.linkedin.com/voyager/api/identity/profiles/ACoAAAKT9JQBsH7LwKaE9Myay9WcX8OVGuDq9Uw
+    // NOTE: `/profileView` suffix is more detailed than without it.
     return this.apiKy
       .get(`identity/profiles/${id}/profileView`)
       .json<ProfileView>()
@@ -393,10 +441,9 @@ export class LinkedInClient {
           universalName: publicId
         }
       })
-      // TODO
-      .json<any>()
+      .json<OrganizationResponse>()
 
-    return res.elements[0]
+    return res.elements[0]!
   }
 
   /**
@@ -416,10 +463,295 @@ export class LinkedInClient {
           universalName: publicId
         }
       })
-      // TODO
-      .json<any>()
+      .json<OrganizationResponse>()
 
-    return res.elements[0]
+    return res.elements[0]!
+  }
+
+  async search({
+    offset = 0,
+    limit = LinkedInClient.MAX_SEARCH_COUNT,
+    ...opts
+  }: SearchParams): Promise<SearchResponse> {
+    const response: SearchResponse = {
+      paging: {
+        offset,
+        count: 0,
+        total: -1
+      },
+      results: []
+    }
+    const params: any = {
+      start: offset,
+      count: Math.min(limit, LinkedInClient.MAX_SEARCH_COUNT),
+      filters: 'List()',
+      origin: 'GLOBAL_SEARCH_HEADER',
+      ...opts
+    }
+
+    const keywords = params.query
+      ? `keywords:${encodeURIComponent(params.query)},`
+      : ''
+
+    // graphql?variables=(start:0,origin:GLOBAL_SEARCH_HEADER,query:(keywords:kevin%20raheja%20heygen,flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.bb967969ef89137e6dec45d038310505
+
+    // TODO: make use of `limit`
+
+    const uri =
+      `graphql?variables=(start:${params.start},origin:${params.origin},` +
+      `query:(${keywords}flagshipSearchIntent:SEARCH_SRP,` +
+      `queryParameters:${params.filters},includeFiltersInResponse:false))` +
+      `&queryId=voyagerSearchDashClusters.bb967969ef89137e6dec45d038310505`
+    // console.log(uri)
+
+    const res = await this.apiKy
+      .get(uri, {
+        headers: {
+          accept: 'application/vnd.linkedin.normalized+json+2.1'
+        }
+      })
+      .json<any>()
+    console.log(JSON.stringify(res, null, 2))
+
+    const dataClusters = res?.data?.data?.searchDashClustersByAll
+    if (!dataClusters) return response
+
+    // TODO: dataClusters.paging
+
+    if (
+      dataClusters.$type !== 'com.linkedin.restli.common.CollectionResponse'
+    ) {
+      return response
+    }
+
+    response.paging.count = dataClusters.paging.count
+    response.paging.total = dataClusters.paging.total
+
+    for (const element of dataClusters.elements ?? []) {
+      if (
+        element.$type !==
+        'com.linkedin.voyager.dash.search.SearchClusterViewModel'
+      ) {
+        continue
+      }
+
+      for (const it of element.items ?? []) {
+        if (it.$type !== 'com.linkedin.voyager.dash.search.SearchItem') {
+          continue
+        }
+
+        const item = it?.item
+        if (!item) continue
+
+        let entity: EntitySearchResult | undefined = item.entityResult
+        if (!entity) {
+          const linkedEntityUrn = item['*entityResult']
+          if (!linkedEntityUrn) continue
+
+          entity = res.included?.find(
+            (e: any) => e.entityUrn === linkedEntityUrn
+          )
+          if (!entity) continue
+        }
+
+        if (
+          entity.$type !==
+          'com.linkedin.voyager.dash.search.EntityResultViewModel'
+        ) {
+          continue
+        }
+
+        response.results.push(entity)
+      }
+    }
+
+    return response
+  }
+
+  async searchPeople(
+    queryOrParams: string | SearchPeopleParams
+  ): Promise<SearchPeopleResponse> {
+    const { includePrivateProfiles = true, ...params } =
+      typeof queryOrParams === 'string'
+        ? { query: queryOrParams }
+        : queryOrParams
+    const filters: string[] = ['(key:resultType,value:List(PEOPLE))']
+
+    if (params.connectionOf) {
+      filters.push(`(key:connectionOf,value:List(${params.connectionOf}))`)
+    }
+
+    if (params.networkDepths) {
+      const stringify = params.networkDepths.join(' | ')
+      filters.push(`(key:network,value:List(${stringify}))`)
+    } else if (params.networkDepth) {
+      filters.push(`(key:network,value:List(${params.networkDepth}))`)
+    }
+
+    if (params.regions) {
+      const stringify = params.regions.join(' | ')
+      filters.push(`(key:geoUrn,value:List(${stringify}))`)
+    }
+
+    if (params.industries) {
+      const stringify = params.industries.join(' | ')
+      filters.push(`(key:industry,value:List(${stringify}))`)
+    }
+
+    if (params.currentCompany) {
+      const stringify = params.currentCompany.join(' | ')
+      filters.push(`(key:currentCompany,value:List(${stringify}))`)
+    }
+
+    if (params.pastCompanies) {
+      const stringify = params.pastCompanies.join(' | ')
+      filters.push(`(key:pastCompany,value:List(${stringify}))`)
+    }
+
+    if (params.profileLanguages) {
+      const stringify = params.profileLanguages.join(' | ')
+      filters.push(`(key:profileLanguage,value:List(${stringify}))`)
+    }
+
+    if (params.nonprofitInterests) {
+      const stringify = params.nonprofitInterests.join(' | ')
+      filters.push(`(key:nonprofitInterest,value:List(${stringify}))`)
+    }
+
+    if (params.schools) {
+      const stringify = params.schools.join(' | ')
+      filters.push(`(key:schools,value:List(${stringify}))`)
+    }
+
+    if (params.serviceCategories) {
+      const stringify = params.serviceCategories.join(' | ')
+      filters.push(`(key:serviceCategory,value:List(${stringify}))`)
+    }
+
+    // `Keywords` filter
+    const keywordTitle = params.keywordTitle ?? params.title
+    if (params.keywordFirstName) {
+      filters.push(`(key:firstName,value:List(${params.keywordFirstName}))`)
+    }
+
+    if (params.keywordLastName) {
+      filters.push(`(key:lastName,value:List(${params.keywordLastName}))`)
+    }
+
+    if (keywordTitle) {
+      filters.push(`(key:title,value:List(${keywordTitle}))`)
+    }
+
+    if (params.keywordCompany) {
+      filters.push(`(key:company,value:List(${params.keywordCompany}))`)
+    }
+
+    if (params.keywordSchool) {
+      filters.push(`(key:school,value:List(${params.keywordSchool}))`)
+    }
+
+    const res = await this.search({
+      offset: params.offset,
+      limit: params.limit,
+      filters: `List(${filters.join(',')})`,
+      ...(params.query && { query: params.query })
+    })
+
+    const response: SearchPeopleResponse = {
+      paging: res.paging,
+      results: []
+    }
+
+    for (const result of res.results) {
+      if (
+        !includePrivateProfiles &&
+        result.entityCustomTrackingInfo?.memberDistance === 'OUT_OF_NETWORK'
+      ) {
+        continue
+      }
+
+      const urnId = getIdFromUrn(getUrnFromRawUpdate(result.entityUrn))
+      assert(urnId)
+
+      const name = result.title?.text
+      assert(name)
+
+      const url = result.navigationUrl?.split('?')[0]
+      assert(url)
+
+      response.results.push({
+        urnId,
+        name,
+        url,
+        distance: result.entityCustomTrackingInfo?.memberDistance,
+        jobTitle: result.primarySubtitle?.text,
+        location: result.secondarySubtitle?.text,
+        summary: result.summary?.text,
+        image: resolveImageUrl(
+          result.image?.attributes?.[0]?.detailData?.nonEntityProfilePicture
+            ?.vectorImage
+        )
+      })
+    }
+
+    return response
+  }
+
+  async searchCompanies(
+    queryOrParams: string | SearchCompaniesParams
+  ): Promise<SearchCompaniesResponse> {
+    const params =
+      typeof queryOrParams === 'string'
+        ? { query: queryOrParams }
+        : queryOrParams
+    const filters: string[] = ['(key:resultType,value:List(COMPANIES))']
+
+    const res = await this.search({
+      ...params,
+      filters: `List(${filters.join(',')})`
+    })
+
+    const response: SearchCompaniesResponse = {
+      paging: res.paging,
+      results: []
+    }
+
+    for (const result of res.results) {
+      const urn = getUrnFromRawUpdate(result.entityUrn) ?? result.trackingUrn
+      assert(urn)
+
+      if (!urn.includes('company:')) continue
+
+      const urnId = getIdFromUrn(urn)
+      assert(urnId)
+
+      const name = result.title?.text
+      assert(name)
+
+      const url = result.navigationUrl?.split('?')[0]
+      assert(url)
+
+      const primarySubtitle = result.primarySubtitle?.text
+      const [industry, location] = primarySubtitle?.split(' • ') ?? []
+      const numFollowers = result.secondarySubtitle?.text?.split(' ')[0]?.trim()
+
+      // TODO: parse insightsResolutionResults for an estimate of number of jobs
+      response.results.push({
+        urnId,
+        name,
+        url,
+        industry,
+        location,
+        numFollowers,
+        summary: result.summary?.text,
+        image: resolveImageUrl(
+          result.image?.attributes?.[0]?.detailData?.nonEntityCompanyLogo
+            ?.vectorImage
+        )
+      })
+    }
+
+    return response
   }
 }
 
