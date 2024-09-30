@@ -26,6 +26,7 @@ import {
   getGroupedItemId,
   getIdFromUrn,
   getUrnFromRawUpdate,
+  isLinkedInUrn,
   normalizeRawOrganization,
   parseExperienceItem,
   resolveImageUrl,
@@ -276,6 +277,10 @@ export class LinkedInClient {
    * @param id The LinkedIn user's public identifier or internal URN ID.
    */
   async getProfileRaw(id: string): Promise<ProfileView> {
+    if (isLinkedInUrn(id)) {
+      id = getIdFromUrn(id)!
+    }
+
     await this.ensureAuthenticated()
 
     // NOTE: the `/profileView` sub-route returns more detailed data.
@@ -389,6 +394,10 @@ export class LinkedInClient {
    * @param id The target LinkedIn user's public identifier or internal URN ID.
    */
   async getProfileContactInfo(id: string) {
+    if (isLinkedInUrn(id)) {
+      id = getIdFromUrn(id)!
+    }
+
     await this.ensureAuthenticated()
 
     return this.apiKy
@@ -400,6 +409,10 @@ export class LinkedInClient {
    * @param id The target LinkedIn user's public identifier or internal URN ID.
    */
   async getProfileSkills(id: string) {
+    if (isLinkedInUrn(id)) {
+      id = getIdFromUrn(id)!
+    }
+
     await this.ensureAuthenticated()
 
     return this.apiKy
@@ -411,6 +424,10 @@ export class LinkedInClient {
    * @param urnId The target LinkedIn user's internal URN ID.
    */
   async getProfileExperiences(urnId: string) {
+    if (isLinkedInUrn(urnId)) {
+      urnId = getIdFromUrn(urnId)!
+    }
+
     await this.ensureAuthenticated()
 
     const profileUrn = `urn:li:fsd_profile:${urnId}`
@@ -475,6 +492,8 @@ export class LinkedInClient {
   /**
    * Fetch profile updates (newsfeed activity) for a given LinkedIn profile.
    *
+   * @TODO This method is currently untested and may not be working.
+
    * @param id The target LinkedIn user's public identifier or internal URN ID.
    */
   async getProfileUpdates(
@@ -504,6 +523,8 @@ export class LinkedInClient {
 
   /**
    * Fetch company updates (newsfeed activity) for a given LinkedIn company.
+   *
+   * @TODO This method is currently untested and may not be working.
    *
    * @param id The target LinkedIn company's public identifier or internal URN ID.
    */
@@ -536,9 +557,16 @@ export class LinkedInClient {
    * Fetches basic data about a school on LinkedIn. Returns the raw data from
    * the LinkedIn API without normalizing it.
    *
-   * @param publicId The school's public LinkedIn identifier. E.g., "brown-university"
+   * @param id The company's public LinkedIn identifier or internal URN ID. E.g. "brown-university"
+   *
+   * @note When using a URN, it should be the school company's entityUrn ID, not
+   * the school's URN ID.
    */
-  async getSchoolRaw(publicId: string): Promise<RawOrganization> {
+  async getSchoolRaw(id: string): Promise<RawOrganization> {
+    if (isLinkedInUrn(id)) {
+      id = getIdFromUrn(id)!
+    }
+
     await this.ensureAuthenticated()
 
     const res = await this.apiKy
@@ -547,7 +575,7 @@ export class LinkedInClient {
           decorationId:
             'com.linkedin.voyager.deco.organization.web.WebFullCompanyMain-12',
           q: 'universalName',
-          universalName: publicId
+          universalName: id
         }
       })
       .json<RawOrganizationResponse>()
@@ -558,10 +586,13 @@ export class LinkedInClient {
   /**
    * Fetches basic data about a school on LinkedIn.
    *
-   * @param publicId The school's public LinkedIn identifier. E.g., "brown-university"
+   * @param id The company's public LinkedIn identifier or internal URN ID. E.g. "brown-university"
+   *
+   * @note When using a URN, it should be the school company's entityUrn ID, not
+   * the school's URN ID.
    */
-  async getSchool(publicId: string): Promise<Organization | undefined> {
-    const rawOrganization = await this.getSchoolRaw(publicId)
+  async getSchool(id: string): Promise<Organization | undefined> {
+    const rawOrganization = await this.getSchoolRaw(id)
     return normalizeRawOrganization(rawOrganization)
   }
 
@@ -569,9 +600,13 @@ export class LinkedInClient {
    * Fetches basic data about a company on LinkedIn. Returns the raw data from
    * the LinkedIn API without normalizing it.
    *
-   * @param publicId The company's public LinkedIn identifier. E.g. "microsoft"
+   * @param id The company's public LinkedIn identifier or internal URN ID. E.g. "microsoft"
    */
-  async getCompanyRaw(publicId: string): Promise<RawOrganization> {
+  async getCompanyRaw(id: string): Promise<RawOrganization> {
+    if (isLinkedInUrn(id)) {
+      id = getIdFromUrn(id)!
+    }
+
     await this.ensureAuthenticated()
 
     const res = await this.apiKy
@@ -580,7 +615,7 @@ export class LinkedInClient {
           decorationId:
             'com.linkedin.voyager.deco.organization.web.WebFullCompanyMain-12',
           q: 'universalName',
-          universalName: publicId
+          universalName: id
         }
       })
       .json<RawOrganizationResponse>()
@@ -591,10 +626,10 @@ export class LinkedInClient {
   /**
    * Fetches basic data about a company on LinkedIn.
    *
-   * @param publicId The company's public LinkedIn identifier. E.g. "microsoft"
+   * @param id The company's public LinkedIn identifier or internal URN ID. E.g. "microsoft"
    */
-  async getCompany(publicId: string): Promise<Organization | undefined> {
-    const rawOrganization = await this.getCompanyRaw(publicId)
+  async getCompany(id: string): Promise<Organization | undefined> {
+    const rawOrganization = await this.getCompanyRaw(id)
     return normalizeRawOrganization(rawOrganization)
   }
 

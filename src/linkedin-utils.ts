@@ -198,27 +198,29 @@ export function normalizeRawOrganization(
     phone: o.phone?.number,
     numFollowers: o.followingInfo?.followerCount,
     affiliatedCompaniesResolutionResults: Object.fromEntries(
-      Object.entries(o.affiliatedCompaniesResolutionResults).map(([k, v]) => [
-        k,
-        {
-          ...omit(
-            v,
-            'universalName',
-            'logo',
-            '$recipeType',
-            'followingInfo',
-            'showcase',
-            'paidCompany'
-          ),
-          id: getIdFromUrn(v.entityUrn)!,
-          publicIdentifier: v.universalName,
-          numFollowers: v.followingInfo?.followerCount,
-          logo: resolveLinkedVectorImageUrl(v.logo?.image)
-        } as AffiliatedCompany
-      ])
+      Object.entries(o.affiliatedCompaniesResolutionResults ?? {}).map(
+        ([k, v]) => [
+          k,
+          {
+            ...omit(
+              v,
+              'universalName',
+              'logo',
+              '$recipeType',
+              'followingInfo',
+              'showcase',
+              'paidCompany'
+            ),
+            id: getIdFromUrn(v.entityUrn)!,
+            publicIdentifier: v.universalName,
+            numFollowers: v.followingInfo?.followerCount,
+            logo: resolveLinkedVectorImageUrl(v.logo?.image)
+          } as AffiliatedCompany
+        ]
+      )
     ),
     groupsResolutionResults: Object.fromEntries(
-      Object.entries(o.groupsResolutionResults).map(([k, v]) => [
+      Object.entries(o.groupsResolutionResults ?? {}).map(([k, v]) => [
         k,
         {
           ...omit(v, 'logo', '$recipeType'),
@@ -228,7 +230,7 @@ export function normalizeRawOrganization(
       ])
     ),
     showcasePagesResolutionResults: Object.fromEntries(
-      Object.entries(o.showcasePagesResolutionResults).map(([k, v]) => [
+      Object.entries(o.showcasePagesResolutionResults ?? {}).map(([k, v]) => [
         k,
         {
           ...omit(

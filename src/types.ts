@@ -643,15 +643,15 @@ export type RawOrganization = {
     }
   }
   affiliatedCompanies: Array<string>
-  affiliatedCompaniesResolutionResults: Record<string, RawAffiliatedCompany>
+  affiliatedCompaniesResolutionResults?: Record<string, RawAffiliatedCompany>
   affiliatedCompaniesWithEmployeesRollup: Array<string>
   affiliatedCompaniesWithJobsRollup: Array<string>
   associatedHashtags: Array<string>
-  associatedHashtagsResolutionResults: Record<string, RawAssociatedHashtag>
+  associatedHashtagsResolutionResults?: Record<string, RawAssociatedHashtag>
   groups: Array<string>
-  groupsResolutionResults: Record<string, RawGroup>
+  groupsResolutionResults?: Record<string, RawGroup>
   showcasePages: Array<string>
-  showcasePagesResolutionResults: Record<string, RawShowcasePage>
+  showcasePagesResolutionResults?: Record<string, RawShowcasePage>
 }
 
 export type RawOrganizationResponse = {
