@@ -10,10 +10,10 @@ import { LinkedInClient } from '../src'
 async function main() {
   const linkedin = new LinkedInClient()
 
-  await linkedin.authenticate()
+  // await linkedin.authenticate()
   // console.log(linkedin.config.path)
 
-  // const res = await linkedin.getProfile('fisch2')
+  const res = await linkedin.getProfile('fisch2')
   // const res = await linkedin.getProfileExperiences(
   //   'ACoAAAdVCacB9uO3u3vDtvGPnDQeweefI2nV0gw'
   // )
@@ -27,8 +27,8 @@ async function main() {
   // const res = await linkedin.getProfileUpdates(
   //   'fisch2'
   // )
-  // const res = await linkedin.searchPeople('kevin raheja heygen')
-  const res = await linkedin.searchCompanies('microsoft')
+  // const res = await linkedin.searchPeople('travis fischer')
+  // const res = await linkedin.searchCompanies('automagical ai video')
   console.log(JSON.stringify(res, null, 2))
 }
 

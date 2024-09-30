@@ -485,17 +485,7 @@ export type ShowcasePage = {
   }
   companyIndustries: Array<Industry>
   logo: {
-    image: {
-      'com.linkedin.common.VectorImage': {
-        rootUrl: string
-        artifacts: Array<{
-          width: number
-          expiresAt: number
-          fileIdentifyingUrlPathSegment: string
-          height: number
-        }>
-      }
-    }
+    image: LinkedVectorImage
     type: string
   }
   paidCompany: boolean
@@ -542,15 +532,7 @@ export type Organization = {
   }
   claimable: boolean
   specialities: Array<string>
-  confirmedLocations: Array<{
-    country: string
-    geographicArea: string
-    city: string
-    postalCode: string
-    streetAddressOptOut: boolean
-    headquarter: boolean
-    line1: string
-  }>
+  confirmedLocations: Array<FullLocation>
   followingInfo: FollowingInfo
   viewerEmployee: boolean
   lcpTreatment: boolean
@@ -570,13 +552,7 @@ export type Organization = {
       language: string
     }
   }
-  headquarter?: {
-    country: string
-    geographicArea: string
-    city: string
-    postalCode: string
-    line1: string
-  }
+  headquarter?: FullLocation
   paidCompany: boolean
   viewerPendingAdministrator: boolean
   companyPageUrl: string
@@ -708,27 +684,37 @@ export interface TextData {
   $type: string
 }
 
+export type FullLocation = {
+  country: string
+  geographicArea: string
+  city: string
+  postalCode: string
+  line1: string
+  headquarter?: boolean
+  streetAddressOptOut?: boolean
+}
+
 export type ImageViewModel = {
   attributes: Array<{
     scalingType: any
     detailData: {
+      imageUrl: any
+      icon: string
+      systemImage: any
+      vectorImage: any
+      ghostImage: any
+      profilePicture: any
       profilePictureWithoutFrame: any
       profilePictureWithRingStatus: any
       companyLogo: any
-      icon: string
-      systemImage: any
-      nonEntityGroupLogo: any
-      vectorImage: any
-      nonEntityProfessionalEventLogo: any
-      profilePicture: any
-      imageUrl: any
       professionalEventLogo: any
-      nonEntityCompanyLogo: any
-      nonEntitySchoolLogo: any
       groupLogo: any
       schoolLogo: any
-      ghostImage: any
-      nonEntityProfilePicture: any
+      nonEntityGroupLogo?: any
+      nonEntityProfessionalEventLogo?: any
+      nonEntityCompanyLogo?: any
+      nonEntitySchoolLogo?: any
+      nonEntityProfilePicture?: any
     }
     tintColor: any
     $recipeTypes: Array<string>

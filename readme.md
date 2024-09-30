@@ -10,11 +10,15 @@
 </p>
 
 - [Intro](#intro)
+- [TODO](#todo)
 - [License](#license)
 
 ## Intro
 
-TODO
+## TODO
+
+- normalize person and company data
+- getProfile => getPerson
 
 ## License
 

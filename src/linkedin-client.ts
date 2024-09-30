@@ -6,6 +6,7 @@ import type {
   EntitySearchResult,
   ExperienceItem,
   LinkedInMetadata,
+  Organization,
   OrganizationResponse,
   ProfileContactInfo,
   ProfileSkills,
@@ -50,7 +51,7 @@ export class LinkedInClient {
 
   protected _sessionId?: string
   protected _metadata?: LinkedInMetadata
-  protected _authenticated = false
+  protected _isAuthenticated = false
 
   constructor({
     username = getEnv('LINKEDIN_USERNAME'),
@@ -129,18 +130,18 @@ export class LinkedInClient {
     })
   }
 
-  get authenticated() {
-    return this._authenticated
+  get isAuthenticated() {
+    return this._isAuthenticated
   }
 
   async ensureAuthenticated() {
-    if (this._authenticated) return
+    if (this._isAuthenticated) return
 
     const setCookies = this.config.get('cookies') as string
     if (setCookies) {
       try {
         this._setAuthCookies(setCookies)
-        this._authenticated = true
+        this._isAuthenticated = true
       } catch (err: any) {
         console.warn(
           'LinkedInClient renewing expired auth cookies',
@@ -249,7 +250,7 @@ export class LinkedInClient {
     const setCookies = res.headers.get('set-cookie')!
     this._setAuthCookies(setCookies)
     this.config.set('cookies', setCookies)
-    this._authenticated = true
+    this._isAuthenticated = true
   }
 
   /**
@@ -429,7 +430,7 @@ export class LinkedInClient {
    *
    * @param publicId The school's public LinkedIn identifier.
    */
-  async getSchool(publicId: string) {
+  async getSchool(publicId: string): Promise<Organization> {
     await this.ensureAuthenticated()
 
     const res = await this.apiKy
@@ -451,7 +452,7 @@ export class LinkedInClient {
    *
    * @param publicId The company's public LinkedIn identifier.
    */
-  async getCompany(publicId: string) {
+  async getCompany(publicId: string): Promise<Organization> {
     await this.ensureAuthenticated()
 
     const res = await this.apiKy
@@ -468,6 +469,11 @@ export class LinkedInClient {
     return res.elements[0]!
   }
 
+  /**
+   * Raw search method for Linkedin.
+   *
+   * You probably want `searchPeople` or `searchCompanies` instead.
+   */
   async search({
     offset = 0,
     limit = LinkedInClient.MAX_SEARCH_COUNT,
@@ -511,12 +517,10 @@ export class LinkedInClient {
         }
       })
       .json<any>()
-    console.log(JSON.stringify(res, null, 2))
+    // console.log(JSON.stringify(res, null, 2))
 
     const dataClusters = res?.data?.data?.searchDashClustersByAll
     if (!dataClusters) return response
-
-    // TODO: dataClusters.paging
 
     if (
       dataClusters.$type !== 'com.linkedin.restli.common.CollectionResponse'
@@ -568,6 +572,12 @@ export class LinkedInClient {
     return response
   }
 
+  /**
+   * Performs a search for people profiles on LinkedIn.
+   *
+   * Takes in a google-style search query or an object containing more fine-
+   * grained search parameters.
+   */
   async searchPeople(
     queryOrParams: string | SearchPeopleParams
   ): Promise<SearchPeopleResponse> {
@@ -697,6 +707,12 @@ export class LinkedInClient {
     return response
   }
 
+  /**
+   * Performs a search for companies on LinkedIn.
+   *
+   * Takes in a google-style search query or an object containing more fine-
+   * grained search parameters.
+   */
   async searchCompanies(
     queryOrParams: string | SearchCompaniesParams
   ): Promise<SearchCompaniesResponse> {
@@ -705,6 +721,8 @@ export class LinkedInClient {
         ? { query: queryOrParams }
         : queryOrParams
     const filters: string[] = ['(key:resultType,value:List(COMPANIES))']
+
+    // TODO: support more company filter options
 
     const res = await this.search({
       ...params,
