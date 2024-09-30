@@ -1,5 +1,6 @@
 import type {
   AffiliatedCompany,
+  Artifact,
   ExperienceItem,
   Group,
   LIDate,
@@ -121,13 +122,15 @@ export function resolveImageUrl(vectorImage?: VectorImage): string | undefined {
   if (!vectorImage?.rootUrl) return
   if (!vectorImage.artifacts?.length) return
 
-  // eslint-disable-next-line unicorn/no-array-reduce
-  const largestArtifact = vectorImage.artifacts.reduce((a, b) => {
-    if (b.width > a.width) return b
-    return a
-  }, vectorImage.artifacts[0]!)
+  const largestArtifact = vectorImage.artifacts.reduce(
+    (a, b) => {
+      if (b.width > a.width) return b
+      return a
+    },
+    vectorImage.artifacts[0] ?? ({ width: 0, height: 0 } as Artifact)
+  )
 
-  if (!largestArtifact.fileIdentifyingUrlPathSegment) return
+  if (!largestArtifact?.fileIdentifyingUrlPathSegment) return
 
   return `${vectorImage.rootUrl}${largestArtifact.fileIdentifyingUrlPathSegment}`
 }

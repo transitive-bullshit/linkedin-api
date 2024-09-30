@@ -176,15 +176,14 @@ export class LinkedInClient {
     const setCookies = splitSetCookieString(setCookiesString)
     const parsedCookies = setCookies.map((c) => parseSetCookie(c))
 
-    // eslint-disable-next-line unicorn/no-array-reduce
-    const cookies = parsedCookies.reduce(
+    const cookies = parsedCookies.reduce<Record<string, SetCookie>>(
       (acc, c) => {
         return {
           ...acc,
           [c.name]: c
         }
       },
-      {} as Record<string, SetCookie>
+      {}
     )
 
     const sessionCookie = cookies.JSESSIONID

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import 'dotenv/config'
 
-// import { parseSetCookie, splitSetCookieString } from 'cookie-es'
 import { LinkedInClient } from '../src'
 
 /**
