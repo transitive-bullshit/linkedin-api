@@ -18,7 +18,6 @@
 ## TODO
 
 - normalize person and company data
-- getProfile => getPerson
 
 - https://github.com/tomquirk/linkedin-api
 

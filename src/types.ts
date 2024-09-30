@@ -1,6 +1,6 @@
 export interface ProfileView {
   entityUrn: string
-  profile: Profile
+  profile: ProfileViewProfile
   positionGroupView: PositionGroupView
   positionView: PositionView
   patentView: PatentView
@@ -45,16 +45,11 @@ export interface Element {
 }
 
 export interface TimePeriod {
-  startDate?: StartDate
-  endDate?: EndDate
+  startDate?: LIDate
+  endDate?: LIDate
 }
 
-export interface StartDate {
-  month?: number
-  year?: number
-}
-
-export interface EndDate {
+export interface LIDate {
   month?: number
   year?: number
 }
@@ -174,28 +169,28 @@ export interface PositionView {
   }[]
 }
 
-export interface Profile {
+export interface ProfileViewProfile {
   entityUrn: string
   firstName: string
   lastName: string
   headline: string
   summary: string
   locationName: string
+  location: Location
   miniProfile: MiniProfile
   industryName: string
+  industryUrn: string
+  versionTag: string
+  defaultLocale: DefaultLocale
   supportedLocales: SupportedLocale[]
-  student: boolean
   geoCountryName: string
   geoCountryUrn: string
-  versionTag: string
-  geoLocationBackfilled: boolean
   elt: boolean
-  industryUrn: string
-  defaultLocale: DefaultLocale
+  student: boolean
+  geoLocationBackfilled: boolean
   showEducationOnProfileTopCard: boolean
   geoLocation: GeoLocation
   geoLocationName: string
-  location: Location
 }
 
 export interface SupportedLocale {
@@ -311,6 +306,68 @@ export interface PublicationView {
   elements: any[]
 }
 
+export interface Profile {
+  entityUrn: string
+  id: string
+  publicIdentifier: string
+  firstName: string
+  lastName: string
+  headline: string
+  summary: string
+  occupation: string
+  location: string
+  industryName: string
+  industryUrn: string
+  trackingId: string
+  defaultLocale: DefaultLocale
+  backgroundImage?: string
+  image?: string
+  education?: PagedList<EducationItem>
+  experience?: PagedList<ExperienceItem>
+}
+
+export type PagedList<T> = {
+  paging: PagingResponse
+  elements: T[]
+}
+
+export type EducationItem = {
+  entityUrn?: string
+  schoolName: string
+  degreeName?: string
+  fieldOfStudy?: string
+  startDate?: string
+  endDate?: string
+  school: {
+    name: string
+    entityUrn?: string
+    id?: string
+    active?: boolean
+    logo?: string
+  }
+}
+
+export type ExperienceItem = {
+  entityUrn?: string
+  title: string
+  companyName?: string
+  description?: string
+  location?: string
+  employmentType?: string
+  duration?: string
+  startDate?: string
+  endDate?: string
+  company: {
+    name: string
+    entityUrn?: string
+    id?: string
+    publicIdentifier?: string
+    industry?: string
+    logo?: string
+    employeeCountRange?: EmployeeCountRange
+  }
+}
+
 export type ProfileContactInfo = {
   entityUrn: string
 
@@ -340,19 +397,6 @@ export type ProfileSkills = {
   elements: Element[]
 }
 
-export type ExperienceItem = {
-  title: string
-  companyName?: string
-  companyImage?: string
-  companyId?: string
-  employmentType?: string
-  locationName?: string
-  duration?: string
-  startDate?: string
-  endDate?: string
-  description?: string
-}
-
 export type SelfProfile = {
   plainId: number
   miniProfile: MiniProfile
@@ -373,7 +417,7 @@ export type FollowingInfo = {
   followerCount: number
 }
 
-export type AffiliatedCompany = {
+export type RawAffiliatedCompany = {
   entityUrn: string
   name: string
   universalName: string
@@ -391,7 +435,22 @@ export type AffiliatedCompany = {
   $recipeType: string
 }
 
-export type AssociatedHashtag = {
+export type AffiliatedCompany = Omit<
+  RawAffiliatedCompany,
+  | 'universalName'
+  | 'logo'
+  | '$recipeType'
+  | 'followingInfo'
+  | 'showcase'
+  | 'paidCompany'
+> & {
+  id: string
+  publicIdentifier: string
+  logo?: string
+  numFollowers?: number
+}
+
+export type RawAssociatedHashtag = {
   entityUrn: string
   feedTopic: {
     topic: {
@@ -450,16 +509,21 @@ export type FundingData = {
   updatedAt: number
 }
 
-export type Group = {
+export type RawGroup = {
   groupName: string
   entityUrn: string
   memberCount: number
   logo: LinkedVectorImage
-  $recipeType: string
   url: string
+  $recipeType: string
 }
 
-export type ShowcasePage = {
+export type Group = Omit<RawGroup, 'logo' | '$recipeType'> & {
+  id: string
+  logo?: string
+}
+
+export type RawShowcasePage = {
   entityUrn: string
   name: string
   universalName: string
@@ -482,8 +546,23 @@ export type ShowcasePage = {
   $recipeType: string
 }
 
+export type ShowcasePage = Omit<
+  RawShowcasePage,
+  | 'universalName'
+  | 'logo'
+  | '$recipeType'
+  | 'followingInfo'
+  | 'showcase'
+  | 'paidCompany'
+> & {
+  id: string
+  publicIdentifier: string
+  logo?: string
+  numFollowers?: number
+}
+
 /** School or Company */
-export type Organization = {
+export type RawOrganization = {
   name: string
   universalName: string
   tagline: string
@@ -492,6 +571,7 @@ export type Organization = {
   url: string
   staffingCompany: boolean
   companyIndustries: Array<Industry>
+  staffCount: number
   callToAction?: {
     callToActionType: string
     visible: boolean
@@ -501,15 +581,10 @@ export type Organization = {
     }
     url: string
   }
-  staffCount: number
-  adsRule: string
   companyEmployeesSearchPageUrl: string
   viewerFollowingJobsUpdates: boolean
   school?: string
-  staffCountRange: {
-    start: number
-    end: number
-  }
+  staffCountRange: EmployeeCountRange
   permissions: {
     landingPageAdmin: boolean
     admin: boolean
@@ -568,19 +643,64 @@ export type Organization = {
     }
   }
   affiliatedCompanies: Array<string>
-  affiliatedCompaniesResolutionResults: Record<string, AffiliatedCompany>
+  affiliatedCompaniesResolutionResults: Record<string, RawAffiliatedCompany>
   affiliatedCompaniesWithEmployeesRollup: Array<string>
   affiliatedCompaniesWithJobsRollup: Array<string>
   associatedHashtags: Array<string>
-  associatedHashtagsResolutionResults: Record<string, AssociatedHashtag>
+  associatedHashtagsResolutionResults: Record<string, RawAssociatedHashtag>
   groups: Array<string>
-  groupsResolutionResults: Record<string, Group>
+  groupsResolutionResults: Record<string, RawGroup>
   showcasePages: Array<string>
-  showcasePagesResolutionResults: Record<string, ShowcasePage>
+  showcasePagesResolutionResults: Record<string, RawShowcasePage>
 }
 
-export type OrganizationResponse = {
-  elements: Array<Organization>
+export type RawOrganizationResponse = {
+  elements: Array<RawOrganization>
+}
+
+/** School or Company */
+export type Organization = Omit<
+  RawOrganization,
+  | 'universalName'
+  | 'logo'
+  | 'backgroundCoverImage'
+  | 'coverPhoto'
+  | 'overviewPhoto'
+  | '$recipeType'
+  | 'callToAction'
+  | 'phone'
+  | 'permissions'
+  | 'followingInfo'
+  | 'adsRule'
+  | 'autoGenerated'
+  | 'lcpTreatment'
+  | 'staffingCompany'
+  | 'showcase'
+  | 'paidCompany'
+  | 'claimable'
+  | 'claimableByViewer'
+  | 'viewerPendingAdministrator'
+  | 'viewerConnectedToAdministrator'
+  | 'viewerFollowingJobsUpdates'
+  | 'viewerEmployee'
+  | 'associatedHashtags'
+  | 'associatedHashtagsResolutionResults'
+  | 'affiliatedCompaniesResolutionResults'
+  | 'groupsResolutionResults'
+  | 'showcasePagesResolutionResults'
+> & {
+  id: string
+  publicIdentifier: string
+  logo?: string
+  backgroundCoverImage?: string
+  coverPhoto?: string
+  overviewPhoto?: string
+  callToActionUrl?: string
+  phone?: string
+  numFollowers?: number
+  affiliatedCompaniesResolutionResults: Record<string, AffiliatedCompany>
+  groupsResolutionResults: Record<string, Group>
+  showcasePagesResolutionResults: Record<string, ShowcasePage>
 }
 
 export type NetworkDepth = 'F' | 'S' | 'O'

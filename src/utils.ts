@@ -44,3 +44,24 @@ export function getUrnFromRawUpdate(update?: string) {
 export function isLinkedInUrn(urn?: string) {
   return urn?.startsWith('urn:li:') && urn.split(':').length >= 4
 }
+
+/**
+ * From `inputObj`, create a new object that does not include `keys`.
+ *
+ * @example
+ * ```js
+ * omit({ a: 1, b: 2, c: 3 }, 'a', 'c') // { b: 2 }
+ * ```
+ */
+export const omit = <
+  T extends Record<string, unknown> | object,
+  K extends keyof any
+>(
+  inputObj: T,
+  ...keys: K[]
+): Omit<T, K> => {
+  const keysSet = new Set(keys)
+  return Object.fromEntries(
+    Object.entries(inputObj).filter(([k]) => !keysSet.has(k as any))
+  ) as any
+}

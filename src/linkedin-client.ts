@@ -3,13 +3,20 @@ import { parseSetCookie, type SetCookie, splitSetCookieString } from 'cookie-es'
 import defaultKy, { type KyInstance } from 'ky'
 
 import type {
+  AffiliatedCompany,
+  EducationItem,
   EntitySearchResult,
   ExperienceItem,
+  Group,
+  LIDate,
+  LinkedVectorImage,
   Organization,
-  OrganizationResponse,
+  Profile,
   ProfileContactInfo,
   ProfileSkills,
   ProfileView,
+  RawOrganization,
+  RawOrganizationResponse,
   SearchCompaniesParams,
   SearchCompaniesResponse,
   SearchParams,
@@ -17,6 +24,7 @@ import type {
   SearchPeopleResponse,
   SearchResponse,
   SelfProfile,
+  ShowcasePage,
   VectorImage
 } from './types'
 import { assert } from './assert'
@@ -25,7 +33,8 @@ import {
   getConfigForUser,
   getEnv,
   getIdFromUrn,
-  getUrnFromRawUpdate
+  getUrnFromRawUpdate,
+  omit
 } from './utils'
 
 export class LinkedInClient {
@@ -239,7 +248,7 @@ export class LinkedInClient {
 
     if (data.login_result !== 'PASS') {
       throw new Error(
-        `LinkedInClient authenticate challenge error: ${data.login_result}`
+        `LinkedInClient authenticate challenge error: ${data.login_result} ${data.challenge_url}`
       )
     }
 
@@ -265,15 +274,118 @@ export class LinkedInClient {
   /**
    * Fetches basic profile information for a given LinkedIn user.
    *
+   * Returns the raw data from the LinkedIn API without normalizing it.
+   *
    * @param id The LinkedIn user's public identifier or internal URN ID.
    */
-  async getProfile(id: string) {
+  async getProfileRaw(id: string): Promise<ProfileView> {
     await this.ensureAuthenticated()
 
-    // NOTE: `/profileView` suffix is more detailed than without it.
+    // NOTE: the `/profileView` sub-route returns more detailed data.
     return this.apiKy
       .get(`identity/profiles/${id}/profileView`)
       .json<ProfileView>()
+  }
+
+  /**
+   * Fetches basic profile information for a given LinkedIn user.
+   *
+   * @param id The LinkedIn user's public identifier or internal URN ID.
+   */
+  async getProfile(id: string): Promise<Profile> {
+    const res = await this.getProfileRaw(id)
+
+    const { profile, educationView, positionView } = res
+    const miniProfile = profile.miniProfile
+    const education: Profile['education'] = educationView
+      ? {
+          paging: {
+            offset: educationView.paging.start,
+            count: educationView.paging.count,
+            total: educationView.paging.total
+          },
+          elements: educationView.elements.map((item) => {
+            const educationItem: EducationItem = {
+              entityUrn: item.entityUrn,
+              schoolName: item.schoolName,
+              degreeName: item.degreeName,
+              fieldOfStudy: item.fieldOfStudy,
+              startDate: stringifyLinkedInDate(item.timePeriod?.startDate),
+              endDate: stringifyLinkedInDate(item.timePeriod?.endDate),
+              school: {
+                name: item.school?.schoolName ?? item.schoolName,
+                entityUrn: item.school?.entityUrn,
+                id: getIdFromUrn(item.school?.entityUrn),
+                active: item.school?.active,
+                logo: resolveLinkedVectorImageUrl(item.school?.logo)
+              }
+            }
+
+            return educationItem
+          })
+        }
+      : undefined
+
+    const experience: Profile['experience'] = positionView
+      ? {
+          paging: {
+            offset: positionView.paging.start,
+            count: positionView.paging.count,
+            total: positionView.paging.total
+          },
+          elements: positionView.elements.map((item) => {
+            const companyUrn =
+              item.companyUrn ?? item.company?.miniCompany?.entityUrn!
+
+            const experienceItem: ExperienceItem = {
+              entityUrn: item.entityUrn,
+              title: item.title,
+              companyName: item.companyName,
+              description: item.description,
+              location: item.locationName,
+              startDate: stringifyLinkedInDate(item.timePeriod?.startDate),
+              endDate: stringifyLinkedInDate(item.timePeriod?.endDate),
+              company: {
+                entityUrn: companyUrn,
+                id: getIdFromUrn(companyUrn),
+                publicIdentifier: item.company?.miniCompany?.universalName,
+                name: item.company?.miniCompany?.name ?? item.companyName,
+                industry: item.company?.industries?.[0],
+                logo: resolveLinkedVectorImageUrl(
+                  item.company?.miniCompany?.logo
+                ),
+                employeeCountRange: item.company?.employeeCountRange
+              }
+            }
+
+            return experienceItem
+          })
+        }
+      : undefined
+
+    const result: Profile = {
+      entityUrn: res.entityUrn,
+      id: getIdFromUrn(res.entityUrn)!,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      headline: profile.headline,
+      summary: profile.summary,
+      occupation: miniProfile?.occupation,
+      location: profile.locationName,
+      industryName: profile.industryName,
+      industryUrn: profile.industryUrn,
+      publicIdentifier: miniProfile?.publicIdentifier,
+      trackingId: miniProfile?.trackingId,
+      defaultLocale: profile.defaultLocale,
+      backgroundImage: resolveLinkedVectorImageUrl(
+        miniProfile?.backgroundImage
+      ),
+      image: resolveLinkedVectorImageUrl(miniProfile?.picture),
+      education,
+      experience
+    }
+
+    return result
   }
 
   /**
@@ -348,7 +460,7 @@ export class LinkedInClient {
             included
           })
           parsedData.companyName = company
-          parsedData.locationName = location
+          parsedData.location = location
           experienceItems.push(parsedData)
         }
       } else {
@@ -424,11 +536,12 @@ export class LinkedInClient {
   }
 
   /**
-   * Fetches basic data about a school on LinkedIn.
+   * Fetches basic data about a school on LinkedIn. Returns the raw data from
+   * the LinkedIn API without normalizing it.
    *
-   * @param publicId The school's public LinkedIn identifier.
+   * @param publicId The school's public LinkedIn identifier. E.g., "brown-university"
    */
-  async getSchool(publicId: string): Promise<Organization> {
+  async getSchoolRaw(publicId: string): Promise<RawOrganization> {
     await this.ensureAuthenticated()
 
     const res = await this.apiKy
@@ -440,7 +553,40 @@ export class LinkedInClient {
           universalName: publicId
         }
       })
-      .json<OrganizationResponse>()
+      .json<RawOrganizationResponse>()
+
+    return res.elements[0]!
+  }
+
+  /**
+   * Fetches basic data about a school on LinkedIn.
+   *
+   * @param publicId The school's public LinkedIn identifier. E.g., "brown-university"
+   */
+  async getSchool(publicId: string): Promise<Organization | undefined> {
+    const rawOrganization = await this.getSchoolRaw(publicId)
+    return normalizeRawOrganization(rawOrganization)
+  }
+
+  /**
+   * Fetches basic data about a company on LinkedIn. Returns the raw data from
+   * the LinkedIn API without normalizing it.
+   *
+   * @param publicId The company's public LinkedIn identifier. E.g. "microsoft"
+   */
+  async getCompanyRaw(publicId: string): Promise<RawOrganization> {
+    await this.ensureAuthenticated()
+
+    const res = await this.apiKy
+      .get('organization/companies', {
+        searchParams: {
+          decorationId:
+            'com.linkedin.voyager.deco.organization.web.WebFullCompanyMain-12',
+          q: 'universalName',
+          universalName: publicId
+        }
+      })
+      .json<RawOrganizationResponse>()
 
     return res.elements[0]!
   }
@@ -448,23 +594,11 @@ export class LinkedInClient {
   /**
    * Fetches basic data about a company on LinkedIn.
    *
-   * @param publicId The company's public LinkedIn identifier.
+   * @param publicId The company's public LinkedIn identifier. E.g. "microsoft"
    */
-  async getCompany(publicId: string): Promise<Organization> {
-    await this.ensureAuthenticated()
-
-    const res = await this.apiKy
-      .get('organization/companies', {
-        searchParams: {
-          decorationId:
-            'com.linkedin.voyager.deco.organization.web.WebFullCompanyMain-12',
-          q: 'universalName',
-          universalName: publicId
-        }
-      })
-      .json<OrganizationResponse>()
-
-    return res.elements[0]!
+  async getCompany(publicId: string): Promise<Organization | undefined> {
+    const rawOrganization = await this.getCompanyRaw(publicId)
+    return normalizeRawOrganization(rawOrganization)
   }
 
   /**
@@ -784,6 +918,7 @@ function parseExperienceItem(
   const companyId: string | undefined =
     getIdFromUrn(component.image?.attributes?.[0]?.['*companyLogo']) ??
     component.image?.actionTarget?.split('/').findLast(Boolean)
+  const companyUrn = companyId ? `urn:li:fsd_company:${companyId}` : undefined
   let companyImage: string | undefined
 
   if (companyId) {
@@ -821,14 +956,18 @@ function parseExperienceItem(
   const parsedData: ExperienceItem = {
     title,
     companyName: !isGroupItem ? company : undefined,
-    companyImage,
-    companyId,
     employmentType: isGroupItem ? company : employmentType,
-    locationName: location,
+    location,
     duration,
     startDate,
     endDate,
-    description
+    description,
+    company: {
+      entityUrn: companyUrn,
+      id: companyId,
+      name: !isGroupItem ? company : undefined,
+      logo: companyImage
+    }
   }
 
   return parsedData
@@ -862,4 +1001,122 @@ export function resolveImageUrl(vectorImage?: VectorImage): string | undefined {
   if (!largestArtifact.fileIdentifyingUrlPathSegment) return
 
   return `${vectorImage.rootUrl}${largestArtifact.fileIdentifyingUrlPathSegment}`
+}
+
+export function resolveLinkedVectorImageUrl(
+  linkedVectorImage?: LinkedVectorImage
+): string | undefined {
+  return resolveImageUrl(linkedVectorImage?.['com.linkedin.common.VectorImage'])
+}
+
+export function stringifyLinkedInDate(date?: LIDate): string | undefined {
+  if (!date) return undefined
+  if (date.year === undefined) return undefined
+
+  return [date.year, date.month].filter(Boolean).join('-')
+}
+
+export function normalizeRawOrganization(
+  o?: RawOrganization
+): Organization | undefined {
+  if (!o) return undefined
+
+  const id = getIdFromUrn(o.entityUrn)
+  if (!id) return undefined
+
+  return {
+    ...omit(
+      o,
+      'universalName',
+      'logo',
+      'backgroundCoverImage',
+      'coverPhoto',
+      'overviewPhoto',
+      '$recipeType',
+      'callToAction',
+      'phone',
+      'permissions',
+      'followingInfo',
+      'adsRule',
+      'autoGenerated',
+      'lcpTreatment',
+      'staffingCompany',
+      'showcase',
+      'paidCompany',
+      'claimable',
+      'claimableByViewer',
+      'viewerPendingAdministrator',
+      'viewerConnectedToAdministrator',
+      'viewerFollowingJobsUpdates',
+      'viewerEmployee',
+      'associatedHashtags',
+      'associatedHashtagsResolutionResults',
+      'affiliatedCompaniesResolutionResults',
+      'groupsResolutionResults',
+      'showcasePagesResolutionResults'
+    ),
+    id,
+    publicIdentifier: o.universalName,
+    logo: resolveLinkedVectorImageUrl(o.logo?.image),
+    backgroundCoverImage: resolveLinkedVectorImageUrl(
+      o.backgroundCoverImage?.image
+    ),
+    coverPhoto:
+      o.coverPhoto?.['com.linkedin.voyager.common.MediaProcessorImage']?.id,
+    overviewPhoto:
+      o.overviewPhoto?.['com.linkedin.voyager.common.MediaProcessorImage']?.id,
+    callToActionUrl: o.callToAction?.url,
+    phone: o.phone?.number,
+    numFollowers: o.followingInfo?.followerCount,
+    affiliatedCompaniesResolutionResults: Object.fromEntries(
+      Object.entries(o.affiliatedCompaniesResolutionResults).map(([k, v]) => [
+        k,
+        {
+          ...omit(
+            v,
+            'universalName',
+            'logo',
+            '$recipeType',
+            'followingInfo',
+            'showcase',
+            'paidCompany'
+          ),
+          id: getIdFromUrn(v.entityUrn)!,
+          publicIdentifier: v.universalName,
+          numFollowers: v.followingInfo?.followerCount,
+          logo: resolveLinkedVectorImageUrl(v.logo?.image)
+        } as AffiliatedCompany
+      ])
+    ),
+    groupsResolutionResults: Object.fromEntries(
+      Object.entries(o.groupsResolutionResults).map(([k, v]) => [
+        k,
+        {
+          ...omit(v, 'logo', '$recipeType'),
+          id: getIdFromUrn(v.entityUrn)!,
+          logo: resolveLinkedVectorImageUrl(v.logo)
+        } as Group
+      ])
+    ),
+    showcasePagesResolutionResults: Object.fromEntries(
+      Object.entries(o.showcasePagesResolutionResults).map(([k, v]) => [
+        k,
+        {
+          ...omit(
+            v,
+            'universalName',
+            'logo',
+            '$recipeType',
+            'followingInfo',
+            'showcase',
+            'paidCompany'
+          ),
+          id: getIdFromUrn(v.entityUrn)!,
+          publicIdentifier: v.universalName,
+          numFollowers: v.followingInfo?.followerCount,
+          logo: resolveLinkedVectorImageUrl(v.logo?.image)
+        } as ShowcasePage
+      ])
+    )
+  }
 }
