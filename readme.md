@@ -20,6 +20,8 @@
 - normalize person and company data
 - getProfile => getPerson
 
+- https://github.com/tomquirk/linkedin-api
+
 ## License
 
 MIT © [Travis Fischer](https://x.com/transitive_bs)

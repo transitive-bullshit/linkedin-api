@@ -1,29 +1,18 @@
-export interface ApplicationInstance {
-  applicationUrn: string
-  version: string
-  trackingId: number[]
-}
-
-export interface LinkedInMetadata {
-  applicationInstance?: ApplicationInstance
-  clientPageInstanceId?: string
-}
-
 export interface ProfileView {
+  entityUrn: string
+  profile: Profile
   positionGroupView: PositionGroupView
+  positionView: PositionView
   patentView: PatentView
   summaryTreasuryMediaCount: number
   summaryTreasuryMedias: any[]
   educationView: EducationView
   organizationView: OrganizationView
   projectView: ProjectView
-  positionView: PositionView
-  profile: Profile
   languageView: LanguageView
   certificationView: CertificationView
   testScoreView: TestScoreView
   volunteerCauseView: VolunteerCauseView
-  entityUrn: string
   courseView: CourseView
   honorView: HonorView
   skillView: SkillView
@@ -33,10 +22,10 @@ export interface ProfileView {
 }
 
 export interface PositionGroupView {
-  paging: Paging
   entityUrn: string
   profileId: string
   elements: Element[]
+  paging: Paging
 }
 
 export interface Paging {
@@ -172,11 +161,11 @@ export interface PositionView {
   profileId: string
   elements: {
     entityUrn: string
-    companyName: string
-    timePeriod: TimePeriod
-    description?: string
     title: string
+    description?: string
+    timePeriod: TimePeriod
     companyUrn: string
+    companyName: string
     company?: Company
     locationName?: string
     geoLocationName?: string
@@ -186,11 +175,15 @@ export interface PositionView {
 }
 
 export interface Profile {
-  summary: string
-  industryName: string
+  entityUrn: string
+  firstName: string
   lastName: string
-  supportedLocales: SupportedLocale[]
+  headline: string
+  summary: string
   locationName: string
+  miniProfile: MiniProfile
+  industryName: string
+  supportedLocales: SupportedLocale[]
   student: boolean
   geoCountryName: string
   geoCountryUrn: string
@@ -199,14 +192,10 @@ export interface Profile {
   elt: boolean
   industryUrn: string
   defaultLocale: DefaultLocale
-  firstName: string
   showEducationOnProfileTopCard: boolean
-  entityUrn: string
   geoLocation: GeoLocation
   geoLocationName: string
   location: Location
-  miniProfile: MiniProfile
-  headline: string
 }
 
 export interface SupportedLocale {
@@ -232,12 +221,12 @@ export interface BasicLocation {
 }
 
 export interface MiniProfile {
+  entityUrn: string
   firstName: string
   lastName: string
-  dashEntityUrn: string
   occupation: string
+  dashEntityUrn: string
   objectUrn: string
-  entityUrn: string
   publicIdentifier: string
   trackingId: string
   backgroundImage?: LinkedVectorImage

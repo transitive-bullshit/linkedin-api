@@ -5,7 +5,6 @@ import defaultKy, { type KyInstance } from 'ky'
 import type {
   EntitySearchResult,
   ExperienceItem,
-  LinkedInMetadata,
   Organization,
   OrganizationResponse,
   ProfileContactInfo,
@@ -50,7 +49,6 @@ export class LinkedInClient {
   protected apiKy: KyInstance
 
   protected _sessionId?: string
-  protected _metadata?: LinkedInMetadata
   protected _isAuthenticated = false
 
   constructor({
