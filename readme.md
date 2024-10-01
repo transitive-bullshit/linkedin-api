@@ -21,7 +21,7 @@
 
 ## Intro
 
-This package provides a readonly HTTP API client for accessing LinkedIn's Voyager and GraphQL APIs. These are the same APIs that the official LinkedIn webapp uses to fetch data about user profiles, companies, jobs, and more.
+This package provides a readonly HTTP API client for accessing LinkedIn's Voyager APIs. These are the same APIs that the official LinkedIn webapp uses to fetch data about user profiles, companies, and jobs.
 
 No official API access is required. All you need is a valid LinkedIn user account (username and password).
 
@@ -58,7 +58,7 @@ LinkedIn's internal data format is pretty verbose, so these methods all normaliz
 
 `LinkedInClient` will automatically authenticate itself lazily the first time it needs to using the provided username and password. The resulting cookies are stored using [conf](https://github.com/sindresorhus/conf) in a platform-dependent user data directory. You can access the cookie data via `linkedin.config.path` which will point to a path on your filesystem.
 
-Auth cookies are re-initialized automatically either when they expire or when the client runs into a `401`/`403` HTTP error. You can force the auth cookie to refresh by calling `linkedin.authenticate()` which returns a `Promise`.
+Auth cookies are re-initialized automatically either when they expire or when the client runs into a `401`/`403` HTTP error. You can force the auth cookie to refresh manually by calling `linkedin.authenticate()` which returns a `Promise`.
 
 It is highly recommended that you throttle your API requests to LinkedIn to avoid being blocked. The default `LinkedInClient` uses [throttle-ky](https://github.com/transitive-bullshit/throttle-ky) to enforce a rate-limit of up to 1 request per second, but this can be customized as follows:
 
@@ -84,15 +84,15 @@ const linkedin = new LinkedInClient({
 ```
 
 > [!IMPORTANT]
-> I highly recommend not using your personal LinkedIn account credentials with any LinkedIn scraping library unless you don't care about the possibility of being banned. Create a throwaway account for testing purposes.
+> I recommend not using your personal LinkedIn account credentials with any LinkedIn scraping library unless you don't care about the possibility of being banned. Create a throwaway account for testing purposes.
 
 ## Troubleshooting
 
 #### `CHALLENGE` errors
 
-LinkedIn will sometimes respond to authentication requests with a Challenge URL. This can happen if LinkedIn suspects your account is being used programatically (possibly a combination of IP-based, usage-based, and workload-based).
+LinkedIn will sometimes respond to authentication requests with a Challenge URL. This can happen if LinkedIn suspects your account is being used programatically (possibly a combination of IP-based, usage-based, and/or workload-based).
 
-If you get a `CHALLENGE` error, you'll need to manually log out and log back in with your browser.
+If you get a `CHALLENGE` error, you'll need to manually log out and log back in to your account using a browser.
 
 **Known reasons for Challenge** include:
 
