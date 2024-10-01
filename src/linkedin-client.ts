@@ -55,8 +55,11 @@ export class LinkedInClient {
   protected authKy: KyInstance
   protected apiKy: KyInstance
 
+  protected _cookies?: Record<string, SetCookie>
   protected _sessionId?: string
   protected _isAuthenticated = false
+  protected _isAuthenticating = false
+  protected _isReauthenticating = false
 
   constructor({
     username = getEnv('LINKEDIN_USERNAME'),
@@ -112,25 +115,79 @@ export class LinkedInClient {
         'x-restli-protocol-version': '2.0.0',
         ...apiHeaders
       },
-      redirect: 'error',
       hooks: {
-        beforeError: [
-          async (error) => {
-            const { request, response } = error
+        afterResponse: [
+          async (request, _options, response) => {
+            try {
+              // Attempt to automatically re-authenticate when running into auth errors.
+              if (response.status === 403 || response.status === 401) {
+                console.log('LinkedInClient auth error', {
+                  method: request.method,
+                  url: request.url,
+                  status: response.status
+                  // responseHeaders: Object.fromEntries(response.headers.entries())
+                })
 
-            if (!request || !response?.status) {
-              return error
+                this._isAuthenticated = false
+
+                if (this._isAuthenticating || this._isReauthenticating) {
+                  return response
+                }
+
+                this._isReauthenticating = true
+
+                try {
+                  try {
+                    await this.authenticate()
+                  } catch (err: any) {
+                    console.warn(
+                      `LinkedInClient auth error ${response.status} from request ${request.method} ${request.url} error reauthenticating: ${err.message}`
+                    )
+                    return response
+                  }
+
+                  assert(this._sessionId)
+                  assert(this._cookies)
+                  const csrfToken = this._sessionId.replaceAll('"', '')
+                  request.headers.set('csrf-token', csrfToken)
+                  request.headers.set('cookie', encodeCookies(this._cookies))
+
+                  return await ky(request)
+                } finally {
+                  this._isReauthenticating = false
+                }
+              }
+            } catch (err) {
+              console.error(
+                'LinkedInClient unhandled auth error',
+                {
+                  method: request.method,
+                  url: request.url,
+                  status: response.status
+                },
+                err
+              )
             }
-
-            console.warn(
-              'ky error',
-              request.url,
-              response.status,
-              response.headers
-            )
-            return error
           }
         ]
+
+        // beforeError: [
+        //   async (error) => {
+        //     const { request, response } = error
+
+        //     if (!request || !response?.status) {
+        //       return error
+        //     }
+
+        //     console.warn(
+        //       'ky error',
+        //       request.url,
+        //       response.status,
+        //       response.headers
+        //     )
+        //     return error
+        //   }
+        // ]
       }
     })
   }
@@ -160,8 +217,8 @@ export class LinkedInClient {
   }
 
   protected async _getAuthCookieString() {
-    const res0 = await this.authKy.get('uas/authenticate')
-    const cookieString = res0.headers.get('set-cookie')
+    const res = await this.authKy.get('uas/authenticate')
+    const cookieString = res.headers.get('set-cookie')
     assert(cookieString)
 
     return cookieString
@@ -176,7 +233,7 @@ export class LinkedInClient {
     const setCookies = splitSetCookieString(setCookiesString)
     const parsedCookies = setCookies.map((c) => parseSetCookie(c))
 
-    const cookies = parsedCookies.reduce<Record<string, SetCookie>>(
+    this._cookies = parsedCookies.reduce<Record<string, SetCookie>>(
       (acc, c) => {
         return {
           ...acc,
@@ -186,7 +243,7 @@ export class LinkedInClient {
       {}
     )
 
-    const sessionCookie = cookies.JSESSIONID
+    const sessionCookie = this._cookies.JSESSIONID
     assert(sessionCookie, 'LinkedInClient session missing JSESSIONID cookie')
 
     if (sessionCookie.expires && Date.now() > sessionCookie.expires.getTime()) {
@@ -199,62 +256,68 @@ export class LinkedInClient {
     this.authKy = this.authKy.extend({
       headers: {
         'csrf-token': csrfToken,
-        cookie: encodeCookies(cookies)
+        cookie: encodeCookies(this._cookies!)
       }
     })
 
     this.apiKy = this.apiKy.extend({
       headers: {
         'csrf-token': csrfToken,
-        cookie: encodeCookies(cookies)
+        cookie: encodeCookies(this._cookies!)
       }
     })
 
-    return cookies
+    return this._cookies
   }
 
   async authenticate() {
-    await this._setAuthCookies(await this._getAuthCookieString())
-    assert(this._sessionId)
+    this._isAuthenticating = true
 
-    const res = await this.authKy.post('uas/authenticate', {
-      body: new URLSearchParams({
-        session_key: this.username,
-        session_password: this.password,
-        JSESSIONID: this._sessionId!
-      }),
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded'
+    try {
+      await this._setAuthCookies(await this._getAuthCookieString())
+      assert(this._sessionId)
+
+      const res = await this.authKy.post('uas/authenticate', {
+        body: new URLSearchParams({
+          session_key: this.username,
+          session_password: this.password,
+          JSESSIONID: this._sessionId!
+        }),
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded'
+        }
+      })
+
+      if (res.status === 401) {
+        throw new Error(
+          `LinkedInClient authenticate HTTP error: invalid credentials ${res.status}`
+        )
       }
-    })
 
-    if (res.status === 401) {
-      throw new Error(
-        `LinkedInClient authenticate HTTP error: invalid credentials ${res.status}`
-      )
+      if (res.status !== 200) {
+        throw new Error(`LinkedInClient authenticate HTTP error: ${res.status}`)
+      }
+
+      const data = await res.json<{
+        login_result?: string
+        challenge_url?: string
+      }>()
+
+      if (data.login_result !== 'PASS') {
+        throw new Error(
+          `LinkedInClient authenticate challenge error: ${data.login_result} ${data.challenge_url}`
+        )
+      }
+
+      // TODO: handle challenge_url
+
+      const setCookies = res.headers.get('set-cookie')!
+      this._setAuthCookies(setCookies)
+      this.config.set('cookies', setCookies)
+      this._isAuthenticated = true
+    } finally {
+      this._isAuthenticating = false
     }
-
-    if (res.status !== 200) {
-      throw new Error(`LinkedInClient authenticate HTTP error: ${res.status}`)
-    }
-
-    const data = await res.json<{
-      login_result?: string
-      challenge_url?: string
-    }>()
-
-    if (data.login_result !== 'PASS') {
-      throw new Error(
-        `LinkedInClient authenticate challenge error: ${data.login_result} ${data.challenge_url}`
-      )
-    }
-
-    // TODO: handle challenge_url
-
-    const setCookies = res.headers.get('set-cookie')!
-    this._setAuthCookies(setCookies)
-    this.config.set('cookies', setCookies)
-    this._isAuthenticated = true
   }
 
   /**
@@ -635,13 +698,15 @@ export class LinkedInClient {
   /**
    * Raw search method for Linkedin.
    *
-   * You probably want `searchPeople` or `searchCompanies` instead.
+   * You probably want to use `searchPeople` or `searchCompanies` instead.
    */
   async search({
     offset = 0,
     limit = LinkedInClient.MAX_SEARCH_COUNT,
     ...opts
   }: SearchParams): Promise<SearchResponse> {
+    await this.ensureAuthenticated()
+
     const response: SearchResponse = {
       paging: {
         offset,

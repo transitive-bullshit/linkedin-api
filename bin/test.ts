@@ -10,7 +10,7 @@ async function main() {
   const linkedin = new LinkedInClient()
 
   // await linkedin.authenticate()
-  // console.log(linkedin.config.path)
+  console.log(linkedin.config.path)
 
   // const res = await linkedin.getProfile('fisch2')
   // const res = await linkedin.getProfileExperiences(
@@ -21,10 +21,10 @@ async function main() {
   // console.log('authenticated', linkedin.config.get('cookies'))
 
   // const res = await linkedin.getMe()
-  // const res = await linkedin.getSchool('brown-university')
+  const res = await linkedin.getSchool('brown-university')
   // const res = await linkedin.getSchool('157343')
   // const res = await linkedin.getSchool('urn:li:fs_normalized_company:157343')
-  const res = await linkedin.getCompany('microsoft')
+  // const res = await linkedin.getCompany('microsoft')
   // const res = await linkedin.getProfileUpdates(
   //   'fisch2'
   // )

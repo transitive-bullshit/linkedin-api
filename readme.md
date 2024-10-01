@@ -17,7 +17,8 @@
 
 ## TODO
 
-- normalize person and company data
+- searchJobs()
+- getJob()
 
 - https://github.com/tomquirk/linkedin-api
 
