@@ -41,7 +41,9 @@
   "dependencies": {
     "conf": "^13.0.1",
     "cookie-es": "^1.2.2",
-    "ky": "^1.7.2"
+    "ky": "^1.7.2",
+    "p-throttle": "^6.2.0",
+    "throttle-ky": "^1.0.1"
   },
   "devDependencies": {
     "@fisch0920/eslint-config": "^1.4.0",

@@ -1,6 +1,8 @@
 import type Conf from 'conf'
 import { parseSetCookie, type SetCookie, splitSetCookieString } from 'cookie-es'
 import defaultKy, { type KyInstance } from 'ky'
+import pThrottle from 'p-throttle'
+import throttleKy from 'throttle-ky'
 
 import type {
   EducationItem,
@@ -35,6 +37,12 @@ import {
 } from './linkedin-utils'
 import { encodeCookies, getConfigForUser, getEnv } from './utils'
 
+// Allow up to 1 request per second by default.
+const defaultThrottle = pThrottle({
+  limit: 1,
+  interval: 1000
+})
+
 export class LinkedInClient {
   // max seems to be 100 posts per page (currently unused)
   // static readonly MAX_POST_COUNT = 100
@@ -66,6 +74,7 @@ export class LinkedInClient {
     password = getEnv('LINKEDIN_PASSWORD'),
     baseUrl = 'https://www.linkedin.com',
     ky = defaultKy,
+    throttle = true,
     apiHeaders = {},
     authHeaders = {}
   }: {
@@ -73,6 +82,7 @@ export class LinkedInClient {
     password?: string
     baseUrl?: string
     ky?: KyInstance
+    throttle?: boolean
     apiHeaders?: Record<string, string>
     authHeaders?: Record<string, string>
   } = {}) {
@@ -89,7 +99,9 @@ export class LinkedInClient {
     this.password = password
     this.config = getConfigForUser(username)
 
-    this.authKy = ky.extend({
+    const throttledKy = throttle ? throttleKy(ky, defaultThrottle) : ky
+
+    this.authKy = throttledKy.extend({
       prefixUrl: baseUrl,
       headers: {
         'x-li-user-agent':
@@ -102,7 +114,7 @@ export class LinkedInClient {
       }
     })
 
-    this.apiKy = ky.extend({
+    this.apiKy = throttledKy.extend({
       prefixUrl: `${baseUrl}/voyager/api`,
       headers: {
         'user-agent': [
@@ -119,18 +131,22 @@ export class LinkedInClient {
         afterResponse: [
           async (request, _options, response) => {
             try {
-              // Attempt to automatically re-authenticate when running into auth errors.
+              // Attempt to automatically re-authenticate after receiving an auth error.
               if (response.status === 403 || response.status === 401) {
-                console.log('LinkedInClient auth error', {
-                  method: request.method,
-                  url: request.url,
-                  status: response.status
-                  // responseHeaders: Object.fromEntries(response.headers.entries())
-                })
+                console.log(
+                  'LinkedInClient auth error (attempting to re-authenticate)',
+                  {
+                    method: request.method,
+                    url: request.url,
+                    status: response.status
+                    // responseHeaders: Object.fromEntries(response.headers.entries())
+                  }
+                )
 
                 this._isAuthenticated = false
 
                 if (this._isAuthenticating || this._isReauthenticating) {
+                  // Avoid infinite authentication loops
                   return response
                 }
 
@@ -141,7 +157,7 @@ export class LinkedInClient {
                     await this.authenticate()
                   } catch (err: any) {
                     console.warn(
-                      `LinkedInClient auth error ${response.status} from request ${request.method} ${request.url} error reauthenticating: ${err.message}`
+                      `LinkedInClient auth error ${response.status} from request ${request.method} ${request.url} error re-authenticating: ${err.message}`
                     )
                     return response
                   }
@@ -470,15 +486,26 @@ export class LinkedInClient {
   /**
    * @param id The target LinkedIn user's public identifier or internal URN ID.
    */
-  async getProfileSkills(id: string) {
-    if (isLinkedInUrn(id)) {
-      id = getIdFromUrn(id)!
-    }
+  async getProfileSkills(
+    idOrOptions: string | { id: string; offset?: number; limit?: number }
+  ) {
+    const {
+      id,
+      offset = 0,
+      limit = 100
+    } = typeof idOrOptions === 'string' ? { id: idOrOptions } : idOrOptions
+
+    const resolvedId = isLinkedInUrn(id) ? getIdFromUrn(id)! : id
 
     await this.ensureAuthenticated()
 
     return this.apiKy
-      .get(`identity/profiles/${id}/skills`)
+      .get(`identity/profiles/${resolvedId}/skills`, {
+        searchParams: {
+          count: limit,
+          start: offset
+        }
+      })
       .json<ProfileSkills>()
   }
 
@@ -693,6 +720,26 @@ export class LinkedInClient {
   async getCompany(id: string): Promise<Organization | undefined> {
     const rawOrganization = await this.getCompanyRaw(id)
     return normalizeRawOrganization(rawOrganization)
+  }
+
+  /**
+   * Fetches data about a job posting on LinkedIn.
+   *
+   * @param jobId The ID of the job posting.
+   */
+  async getJob(jobId: string) {
+    await this.ensureAuthenticated()
+
+    const res = await this.apiKy
+      .get(`jobs/jobPostings/${jobId}`, {
+        searchParams: {
+          decorationId:
+            'com.linkedin.voyager.deco.jobs.web.shared.WebLightJobPosting-23'
+        }
+      })
+      .json<any>()
+
+    return res
   }
 
   /**
