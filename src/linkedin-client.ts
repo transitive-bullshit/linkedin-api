@@ -139,7 +139,7 @@ export class LinkedInClient {
                 },
 
                 // Also enforce a default rate-limit.
-                defaultThrottle(() => undefined)
+                defaultThrottle(() => Promise.resolve(undefined))
               ]
             }
           : undefined),
