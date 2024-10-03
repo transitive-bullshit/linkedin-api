@@ -91,7 +91,7 @@ const linkedin = new LinkedInClient({
 
 The easiest way to use a proxy with Node.js `fetch` is via undici's [EnvHttpProxyAgent](https://github.com/nodejs/undici/blob/main/docs/docs/api/EnvHttpProxyAgent.md), which will respect the `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables.
 
-```
+```sh
 npm install undici
 ```
 
