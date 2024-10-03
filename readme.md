@@ -60,7 +60,7 @@ LinkedIn's internal data format is pretty verbose, so these methods all normaliz
 
 Auth cookies are re-initialized automatically either when they expire or when the client runs into a `401`/`403` HTTP error. You can force the auth cookie to refresh manually by calling `linkedin.authenticate()` which returns a `Promise`.
 
-It is highly recommended that you throttle your API requests to LinkedIn to avoid being blocked. The default `LinkedInClient` uses [throttle-ky](https://github.com/transitive-bullshit/throttle-ky) to enforce a rate-limit of up to 1 request per second, but this can be customized as follows:
+It is highly recommended that you throttle your API requests to LinkedIn to avoid being blocked. The default `LinkedInClient` adds a random delay between 1-5 seconds before each API request in order to try and avoid suspicion. The default throttle also enforces a low rate-limit. It's easy to customize this default rate limit by disabling the default `throttle` and overriding the default `ky` instance:
 
 ```ts
 import { LinkedInClient } from 'linkedin-api'

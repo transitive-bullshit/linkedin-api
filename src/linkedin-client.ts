@@ -1,8 +1,8 @@
 import type Conf from 'conf'
 import { parseSetCookie, type SetCookie, splitSetCookieString } from 'cookie-es'
+import { rangeDelay } from 'delay'
 import defaultKy, { type KyInstance } from 'ky'
 import pThrottle from 'p-throttle'
-import throttleKy from 'throttle-ky'
 
 import type {
   EducationItem,
@@ -99,9 +99,7 @@ export class LinkedInClient {
     this.password = password
     this.config = getConfigForUser(username)
 
-    const throttledKy = throttle ? throttleKy(ky, defaultThrottle) : ky
-
-    this.authKy = throttledKy.extend({
+    this.authKy = ky.extend({
       prefixUrl: baseUrl,
       headers: {
         'x-li-user-agent':
@@ -112,9 +110,12 @@ export class LinkedInClient {
         'accept-language': 'en-us',
         ...authHeaders
       }
+
+      // Note that by default, auth requests are not throttled the same as
+      // API requests.
     })
 
-    this.apiKy = throttledKy.extend({
+    this.apiKy = ky.extend({
       prefixUrl: `${baseUrl}/voyager/api`,
       headers: {
         'user-agent': [
@@ -128,6 +129,21 @@ export class LinkedInClient {
         ...apiHeaders
       },
       hooks: {
+        ...(throttle
+          ? {
+              beforeRequest: [
+                async () => {
+                  // Add a random delay before each API request in an attempt to
+                  // avoid suspicion.
+                  await rangeDelay(1000, 5000)
+                },
+
+                // Also enforce a default rate-limit.
+                defaultThrottle(() => undefined)
+              ]
+            }
+          : undefined),
+
         afterResponse: [
           async (request, _options, response) => {
             try {
@@ -728,6 +744,10 @@ export class LinkedInClient {
    * @param jobId The ID of the job posting.
    */
   async getJob(jobId: string) {
+    if (isLinkedInUrn(jobId)) {
+      jobId = getIdFromUrn(jobId)!
+    }
+
     await this.ensureAuthenticated()
 
     const res = await this.apiKy

@@ -10,7 +10,7 @@ async function main() {
   const linkedin = new LinkedInClient()
 
   // await linkedin.authenticate()
-  console.log(linkedin.config.path)
+  // console.log(linkedin.config.path)
 
   // const res = await linkedin.getProfile('fisch2')
   // const res = await linkedin.getProfileExperiences(
