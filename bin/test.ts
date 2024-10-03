@@ -1,13 +1,22 @@
 #!/usr/bin/env node
 import 'dotenv/config'
 
+import ky from 'ky'
+import { EnvHttpProxyAgent } from 'undici'
+
 import { LinkedInClient } from '../src'
 
 /**
  * Scratch pad for testing.
  */
 async function main() {
-  const linkedin = new LinkedInClient()
+  const envHttpProxyAgent = new EnvHttpProxyAgent()
+
+  const linkedin = new LinkedInClient({
+    ky: ky.extend({
+      dispatcher: envHttpProxyAgent
+    })
+  })
 
   // await linkedin.authenticate()
   // console.log(linkedin.config.path)

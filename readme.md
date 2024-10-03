@@ -13,6 +13,7 @@
 - [Install](#install)
 - [Usage](#usage)
   - [Authentication](#authentication)
+  - [Proxies](#proxies)
 - [Troubleshooting](#troubleshooting)
   - [`CHALLENGE` errors](#challenge-errors)
 - [TODO](#todo)
@@ -85,6 +86,26 @@ const linkedin = new LinkedInClient({
 
 > [!IMPORTANT]
 > I recommend not using your personal LinkedIn account credentials with any LinkedIn scraping library unless you don't care about the possibility of being banned. Create a throwaway account for testing purposes.
+
+### Proxies
+
+The easiest way to use a proxy with Node.js `fetch` is via undici's [EnvHttpProxyAgent](https://github.com/nodejs/undici/blob/main/docs/docs/api/EnvHttpProxyAgent.md), which will respect the `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables.
+
+```
+npm install undici
+```
+
+```ts
+import { LinkedInClient } from 'linkedin-api'
+import { EnvHttpProxyAgent } from 'undici'
+import ky from 'ky'
+
+const linkedin = new LinkedInClient({
+  ky: ky.extend({
+    dispatcher: new EnvHttpProxyAgent()
+  })
+})
+```
 
 ## Troubleshooting
 

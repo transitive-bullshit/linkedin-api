@@ -202,24 +202,6 @@ export class LinkedInClient {
             }
           }
         ]
-
-        // beforeError: [
-        //   async (error) => {
-        //     const { request, response } = error
-
-        //     if (!request || !response?.status) {
-        //       return error
-        //     }
-
-        //     console.warn(
-        //       'ky error',
-        //       request.url,
-        //       response.status,
-        //       response.headers
-        //     )
-        //     return error
-        //   }
-        // ]
       }
     })
   }
