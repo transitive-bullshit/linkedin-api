@@ -22,7 +22,7 @@
 
 ## Intro
 
-This package provides a readonly HTTP API client for accessing LinkedIn's Voyager APIs. These are the same APIs that the official LinkedIn webapp uses to fetch data about user profiles, companies, and jobs.
+This package provides a HTTP API client for accessing LinkedIn's readonly Voyager APIs. These are the same APIs that the official LinkedIn webapp uses to fetch data about user profiles, companies, and jobs.
 
 No official API access is required. All you need is a valid LinkedIn user account (username and password).
 
@@ -41,8 +41,8 @@ npm install linkedin-api
 import { LinkedInClient } from 'linkedin-api'
 
 const linkedin = new LinkedInClient({
-  username: 'TODO@example.com', // defaults to process.env.LINKEDIN_USERNAME
-  password: 'TODO' // defaults to process.env.LINKEDIN_PASSWORD
+  username: 'todo@example.com', // defaults to LINKEDIN_USERNAME
+  password: 'todo' // defaults to LINKEDIN_PASSWORD
 })
 
 const user = await linkedin.getProfile('fisch2')
@@ -57,11 +57,11 @@ LinkedIn's internal data format is pretty verbose, so these methods all normaliz
 
 ### Authentication
 
-`LinkedInClient` will automatically authenticate itself lazily the first time it needs to using the provided username and password. The resulting cookies are stored using [conf](https://github.com/sindresorhus/conf) in a platform-dependent user data directory. You can access the cookie data via `linkedin.config.path` which will point to a path on your filesystem.
+`LinkedInClient` will automatically authenticate itself lazily using the provided username and password. The resulting cookies are stored using [conf](https://github.com/sindresorhus/conf) in a platform-dependent user data directory. You can access the cookie data via `linkedin.config.path` which will point to a path on your filesystem.
 
 Auth cookies are re-initialized automatically either when they expire or when the client runs into a `401`/`403` HTTP error. You can force the auth cookie to refresh manually by calling `linkedin.authenticate()` which returns a `Promise`.
 
-It is highly recommended that you throttle your API requests to LinkedIn to avoid being blocked. The default `LinkedInClient` adds a random delay between 1-5 seconds before each API request in order to try and avoid suspicion. The default throttle also enforces a low rate-limit. It's easy to customize this default rate limit by disabling the default `throttle` and overriding the default `ky` instance:
+It is highly recommended that you throttle your API requests to LinkedIn to avoid being blocked. The default `LinkedInClient` adds a random delay between 1-5 seconds before each API request in order to try and evade detection. The default throttle also enforces a low rate-limit. It's easy to customize this default rate limit by disabling the default `throttle` and overriding the default `ky` instance:
 
 ```ts
 import { LinkedInClient } from 'linkedin-api'

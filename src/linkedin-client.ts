@@ -99,7 +99,24 @@ export class LinkedInClient {
     this.password = password
     this.config = getConfigForUser(username)
 
-    this.authKy = ky.extend({
+    const throttledKy = throttle
+      ? ky.extend({
+          hooks: {
+            beforeRequest: [
+              async () => {
+                // Add a random delay before each API request in an attempt to
+                // evade detection.
+                await rangeDelay(1000, 5000)
+              },
+
+              // Also enforce a default rate-limit.
+              defaultThrottle(() => Promise.resolve(undefined))
+            ]
+          }
+        })
+      : ky
+
+    this.authKy = throttledKy.extend({
       prefixUrl: baseUrl,
       headers: {
         'x-li-user-agent':

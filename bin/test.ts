@@ -10,11 +10,9 @@ import { LinkedInClient } from '../src'
  * Scratch pad for testing.
  */
 async function main() {
-  const envHttpProxyAgent = new EnvHttpProxyAgent()
-
   const linkedin = new LinkedInClient({
     ky: ky.extend({
-      dispatcher: envHttpProxyAgent
+      dispatcher: new EnvHttpProxyAgent()
     })
   })
 
