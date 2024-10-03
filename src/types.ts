@@ -870,7 +870,7 @@ export type EntitySearchResult = {
     $type: string
   }
   overflowActions: Array<any>
-  '*lazyLoadedActions': string
+  '*lazyLoadedActions'?: string
   searchActionType: any
   actorInsights: Array<any>
   insightsResolutionResults: Array<{
