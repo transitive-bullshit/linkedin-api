@@ -458,6 +458,7 @@ export class LinkedInClient {
         }
       : undefined
 
+    // TODO: add other sections (skills, recommendations, etc.)
     const result: Profile = {
       entityUrn: res.entityUrn,
       id: getIdFromUrn(res.entityUrn)!,
