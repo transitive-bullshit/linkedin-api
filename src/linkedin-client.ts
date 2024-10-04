@@ -180,6 +180,8 @@ export class LinkedInClient {
 
                   assert(this._sessionId)
                   assert(this._cookies)
+
+                  // Update the failed request after successfully re-authenticating.
                   const csrfToken = this._sessionId.replaceAll('"', '')
                   request.headers.set('csrf-token', csrfToken)
                   request.headers.set('cookie', encodeCookies(this._cookies))
