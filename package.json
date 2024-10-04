@@ -1,7 +1,7 @@
 {
   "name": "linkedin-api",
-  "version": "1.0.1",
-  "description": "Partial JSON parser extracted from OpenAI's vendored version.",
+  "version": "0.1.0",
+  "description": "API client for accessing LinkedIn's unofficial API.",
   "author": "Travis Fischer <travis@transitivebullsh.it>",
   "license": "MIT",
   "repository": {
