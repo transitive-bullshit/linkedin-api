@@ -13,6 +13,7 @@
 - [Install](#install)
 - [Usage](#usage)
   - [Authentication](#authentication)
+  - [Rate Limiting](#rate-limiting)
   - [Proxies](#proxies)
 - [Troubleshooting](#troubleshooting)
   - [`CHALLENGE` errors](#challenge-errors)
@@ -61,6 +62,11 @@ LinkedIn's internal data format is pretty verbose, so these methods all normaliz
 
 Auth cookies are re-initialized automatically either when they expire or when the client runs into a `401`/`403` HTTP error. You can force the auth cookie to refresh manually by calling `linkedin.authenticate()` which returns a `Promise`.
 
+> [!IMPORTANT]
+> I recommend not using your personal LinkedIn account credentials with any LinkedIn scraping library unless you don't care about the possibility of being banned. Create a throwaway account for testing purposes.
+
+### Rate Limiting
+
 It is highly recommended that you throttle your API requests to LinkedIn to avoid being blocked. The default `LinkedInClient` adds a random delay between 1-5 seconds before each API request in order to try and evade detection. The default throttle also enforces a low rate-limit. It's easy to customize this default rate limit by disabling the default `throttle` and overriding the default `ky` instance:
 
 ```ts
@@ -84,12 +90,9 @@ const linkedin = new LinkedInClient({
 })
 ```
 
-> [!IMPORTANT]
-> I recommend not using your personal LinkedIn account credentials with any LinkedIn scraping library unless you don't care about the possibility of being banned. Create a throwaway account for testing purposes.
-
 ### Proxies
 
-The easiest way to use a proxy with Node.js `fetch` is via undici's [EnvHttpProxyAgent](https://github.com/nodejs/undici/blob/main/docs/docs/api/EnvHttpProxyAgent.md), which will respect the `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables.
+The easiest way to use a proxy with Node.js `fetch` is via undici's [EnvHttpProxyAgent](https://github.com/nodejs/undici/blob/main/docs/docs/api/EnvHttpProxyAgent.md), which will respect the `http_proxy`, `https_proxy`, and `no_proxy` environment variables.
 
 ```sh
 npm install undici
@@ -124,6 +127,7 @@ If you get a `CHALLENGE` error, you'll need to manually log out and log back in 
 
 - `searchJobs()`
 - more methods from the python version https://github.com/tomquirk/linkedin-api
+- add some basic e2e tests
 
 ## Disclaimer
 
