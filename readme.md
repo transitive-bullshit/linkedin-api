@@ -128,6 +128,8 @@ If you get a `CHALLENGE` error, you'll need to manually log out and log back in 
 - `searchJobs()`
 - more methods from the python version https://github.com/tomquirk/linkedin-api
 - add some basic e2e tests
+- add support for multiple accounts
+- add support for brightdata
 
 ## Disclaimer
 
