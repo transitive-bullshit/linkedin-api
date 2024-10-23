@@ -23,7 +23,6 @@ import type {
   SearchResponse,
   SelfProfile
 } from './types'
-import { assert } from './assert'
 import {
   getGroupedItemId,
   getIdFromUrn,
@@ -35,7 +34,7 @@ import {
   resolveLinkedVectorImageUrl,
   stringifyLinkedInDate
 } from './linkedin-utils'
-import { encodeCookies, getConfigForUser, getEnv } from './utils'
+import { assert, encodeCookies, getConfigForUser, getEnv } from './utils'
 
 // Allow up to 1 request per second by default.
 const defaultThrottle = pThrottle({

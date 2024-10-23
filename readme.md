@@ -1,6 +1,6 @@
 # linkedin-api <!-- omit from toc -->
 
-> API client for accessing LinkedIn's unofficial API.
+> TypeScript client for LinkedIn's unofficial API.
 
 <p>
   <a href="https://github.com/transitive-bullshit/linkedin-api/actions/workflows/main.yml"><img alt="Build Status" src="https://github.com/transitive-bullshit/linkedin-api/actions/workflows/main.yml/badge.svg" /></a>

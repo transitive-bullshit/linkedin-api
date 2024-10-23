@@ -1,7 +1,7 @@
 {
   "name": "linkedin-api",
   "version": "0.1.0",
-  "description": "API client for accessing LinkedIn's unofficial API.",
+  "description": "TypeScript client for LinkedIn's unofficial API.",
   "author": "Travis Fischer <travis@transitivebullsh.it>",
   "license": "MIT",
   "repository": {

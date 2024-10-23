@@ -1,6 +1,21 @@
 import type { SetCookie } from 'cookie-es'
 import Conf from 'conf'
 
+export function assert(
+  value: unknown,
+  message?: string | Error
+): asserts value {
+  if (value) {
+    return
+  }
+
+  if (!message) {
+    throw new Error('Assertion failed')
+  }
+
+  throw typeof message === 'string' ? new Error(message) : message
+}
+
 export function getConfigForUser(username: string) {
   return new Conf({ projectName: `linkedin-api`, configName: username })
 }
