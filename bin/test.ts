@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import 'dotenv/config'
 
 import ky from 'ky'
@@ -40,9 +39,4 @@ async function main() {
   console.log(JSON.stringify(res, null, 2))
 }
 
-try {
-  await main()
-} catch (err) {
-  console.error('error', err)
-  process.exit(1)
-}
+await main()
