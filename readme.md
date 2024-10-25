@@ -25,7 +25,7 @@
 
 This package provides a HTTP API client for accessing LinkedIn's readonly Voyager APIs. These are the same APIs that the official LinkedIn webapp uses to fetch data about user profiles, companies, and jobs.
 
-No official API access is required. All you need is a valid LinkedIn user account (username and password).
+No official API access is required. All you need is a valid LinkedIn user account (email and password).
 
 > [!IMPORTANT]
 > This library is not officially supported by LinkedIn. Using this library might violate LinkedIn's Terms of Service. Use it at your own risk.
@@ -42,7 +42,7 @@ npm install linkedin-api
 import { LinkedInClient } from 'linkedin-api'
 
 const linkedin = new LinkedInClient({
-  username: 'todo@example.com', // defaults to LINKEDIN_USERNAME
+  email: 'todo@example.com', // defaults to LINKEDIN_EMAIL
   password: 'todo' // defaults to LINKEDIN_PASSWORD
 })
 
@@ -127,9 +127,6 @@ If you get a `CHALLENGE` error, you'll need to manually log out and log back in 
 
 - `searchJobs()`
 - more methods from the python version https://github.com/tomquirk/linkedin-api
-- add some basic e2e tests
-- add support for multiple accounts
-- add support for brightdata
 
 ## Disclaimer
 

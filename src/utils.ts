@@ -16,8 +16,8 @@ export function assert(
   throw typeof message === 'string' ? new Error(message) : message
 }
 
-export function getConfigForUser(username: string) {
-  return new Conf({ projectName: `linkedin-api`, configName: username })
+export function getConfigForUser(email: string) {
+  return new Conf({ projectName: `linkedin-api`, configName: email })
 }
 
 export function getEnv(name: string): string | undefined {
