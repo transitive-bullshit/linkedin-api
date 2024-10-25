@@ -444,8 +444,8 @@ export class LinkedInClient {
 
     // TODO: add other sections (skills, recommendations, etc.)
     const result: Profile = {
-      entityUrn: res.entityUrn,
       id: getIdFromUrn(res.entityUrn)!,
+      entityUrn: res.entityUrn,
       firstName: profile.firstName,
       lastName: profile.lastName,
       headline: profile.headline,
@@ -512,7 +512,7 @@ export class LinkedInClient {
   /**
    * @param urnId The target LinkedIn user's internal URN ID.
    */
-  async getProfileExperiences(urnId: string) {
+  async getProfileExperiences(urnId: string): Promise<ExperienceItem[]> {
     if (isLinkedInUrn(urnId)) {
       urnId = getIdFromUrn(urnId)!
     }
@@ -680,7 +680,7 @@ export class LinkedInClient {
    * @note When using a URN, it should be the school company's entityUrn ID, not
    * the school's URN ID.
    */
-  async getSchool(id: string): Promise<Organization | undefined> {
+  async getSchool(id: string): Promise<Organization> {
     const rawOrganization = await this.getSchoolRaw(id)
     return normalizeRawOrganization(rawOrganization)
   }
@@ -717,7 +717,7 @@ export class LinkedInClient {
    *
    * @param id The company's public LinkedIn identifier or internal URN ID. E.g. "microsoft"
    */
-  async getCompany(id: string): Promise<Organization | undefined> {
+  async getCompany(id: string): Promise<Organization> {
     const rawOrganization = await this.getCompanyRaw(id)
     return normalizeRawOrganization(rawOrganization)
   }

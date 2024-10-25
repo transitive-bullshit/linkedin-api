@@ -10,7 +10,7 @@ import type {
   ShowcasePage,
   VectorImage
 } from './types'
-import { omit } from './utils'
+import { assert, omit } from './utils'
 
 /**
  * Return the ID of a given Linkedin URN.
@@ -148,13 +148,12 @@ export function stringifyLinkedInDate(date?: LIDate): string | undefined {
   return [date.year, date.month].filter(Boolean).join('-')
 }
 
-export function normalizeRawOrganization(
-  o?: RawOrganization
-): Organization | undefined {
-  if (!o) return undefined
+export function normalizeRawOrganization(o?: RawOrganization): Organization {
+  assert(o, 'Missing organization')
+  assert(o.entityUrn, 'Invalid organization: missing entityUrn')
 
   const id = getIdFromUrn(o.entityUrn)
-  if (!id) return undefined
+  assert(id, `Invalid organization ID: ${o.entityUrn}`)
 
   return {
     ...omit(
