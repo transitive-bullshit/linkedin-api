@@ -17,7 +17,7 @@ export function assert(
 }
 
 export function getConfigForUser(email: string) {
-  return new Conf({ projectName: `linkedin-api`, configName: email })
+  return new Conf({ projectName: 'linkedin-api', configName: email })
 }
 
 export function getEnv(name: string): string | undefined {

@@ -55,7 +55,7 @@ export class LinkedInClient {
   // very conservative max requests count to avoid rate-limit
   static readonly MAX_REPEATED_REQUESTS = 200
 
-  public readonly username: string
+  public readonly email: string
   public readonly password: string
   public readonly config: Conf
 
@@ -69,7 +69,7 @@ export class LinkedInClient {
   protected _isReauthenticating = false
 
   constructor({
-    username = getEnv('LINKEDIN_USERNAME'),
+    email = getEnv('LINKEDIN_EMAIL'),
     password = getEnv('LINKEDIN_PASSWORD'),
     baseUrl = 'https://www.linkedin.com',
     ky = defaultKy,
@@ -77,7 +77,7 @@ export class LinkedInClient {
     apiHeaders = {},
     authHeaders = {}
   }: {
-    username?: string
+    email?: string
     password?: string
     baseUrl?: string
     ky?: KyInstance
@@ -86,17 +86,17 @@ export class LinkedInClient {
     authHeaders?: Record<string, string>
   } = {}) {
     assert(
-      username,
-      'LinkedInClient missing required "username" (defaults to "LINKEDIN_USERNAME")'
+      email,
+      'LinkedInClient missing required "email" (defaults to "LINKEDIN_EMAIL")'
     )
     assert(
       password,
       'LinkedInClient missing required "password" (defaults to "LINKEDIN_PASSWORD")'
     )
 
-    this.username = username
+    this.email = email
     this.password = password
-    this.config = getConfigForUser(username)
+    this.config = getConfigForUser(email)
 
     this.authKy = ky.extend({
       prefixUrl: baseUrl,
@@ -294,7 +294,7 @@ export class LinkedInClient {
 
       const res = await this.authKy.post('uas/authenticate', {
         body: new URLSearchParams({
-          session_key: this.username,
+          session_key: this.email,
           session_password: this.password,
           JSESSIONID: this._sessionId!
         }),

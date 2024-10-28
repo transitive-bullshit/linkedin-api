@@ -58,7 +58,9 @@ LinkedIn's internal data format is pretty verbose, so these methods all normaliz
 
 ### Authentication
 
-`LinkedInClient` will automatically authenticate itself lazily using the provided username and password. The resulting cookies are stored using [conf](https://github.com/sindresorhus/conf) in a platform-dependent user data directory. You can access the cookie data via `linkedin.config.path` which will point to a path on your filesystem.
+`LinkedInClient` will authenticate lazily using the provided email and password, or you can authenticate eagerly by calling `LinkedInClient.ensureAuthenticated()`.
+
+The resulting cookies are stored using [conf](https://github.com/sindresorhus/conf) in a platform-dependent user data directory. You can access the cookie data via `linkedin.config.path` which will point to a path on your filesystem.
 
 Auth cookies are re-initialized automatically either when they expire or when the client runs into a `401`/`403` HTTP error. You can force the auth cookie to refresh manually by calling `linkedin.authenticate()` which returns a `Promise`.
 
