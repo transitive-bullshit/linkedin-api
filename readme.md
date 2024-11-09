@@ -16,7 +16,8 @@
   - [Rate Limiting](#rate-limiting)
   - [Proxies](#proxies)
 - [Troubleshooting](#troubleshooting)
-  - [`CHALLENGE` errors](#challenge-errors)
+  - [`CHALLENGE` Errors](#challenge-errors)
+  - [401 Errors](#401-errors)
 - [TODO](#todo)
 - [Disclaimer](#disclaimer)
 - [License](#license)
@@ -114,7 +115,7 @@ const linkedin = new LinkedInClient({
 
 ## Troubleshooting
 
-#### `CHALLENGE` errors
+### `CHALLENGE` Errors
 
 LinkedIn will sometimes respond to authentication requests with a Challenge URL. This can happen if LinkedIn suspects your account is being used programatically (possibly a combination of IP-based, usage-based, and/or workload-based).
 
@@ -124,6 +125,12 @@ If you get a `CHALLENGE` error, you'll need to manually log out and log back in 
 
 - 2FA
 - Rate-limit - "It looks like you’re visiting a very high number of pages on LinkedIn.". Note - n=1 experiment where this page was hit after ~900 contiguous requests in a single session (within the hour) (these included random delays between each request), as well as a bunch of testing, so who knows the actual limit.
+
+### 401 Errors
+
+If you get a 401 error when trying to authenticate, you likely need to log in via your browser. LinkedIn will sometimes see traffic as suspicious and require a combination of email code verification and CAPTCHA.
+
+Once you can log in via a browser with being challenged with additional auth, then this library should be able to authenticate properly.
 
 ## TODO
 
