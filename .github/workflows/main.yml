@@ -11,8 +11,6 @@ jobs:
       matrix:
         node-version:
           - 18
-          - 20
-          - 21
           - 22
 
     steps:
@@ -23,7 +21,7 @@ jobs:
         uses: pnpm/action-setup@v3
         id: pnpm-install
         with:
-          version: 9.12.2
+          version: 9.12.3
           run_install: false
 
       - name: Install Node.js

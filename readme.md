@@ -65,6 +65,8 @@ The resulting cookies are stored using [conf](https://github.com/sindresorhus/co
 
 Auth cookies are re-initialized automatically either when they expire or when the client runs into a `401`/`403` HTTP error. You can force the auth cookie to refresh manually by calling `linkedin.authenticate()` which returns a `Promise`.
 
+If you want to force re-authentication and ignore the existing cookies, use `LinkedInClient.authenticate()`.
+
 > [!IMPORTANT]
 > I recommend not using your personal LinkedIn account credentials with any LinkedIn scraping library unless you don't care about the possibility of being banned. Create a throwaway account for testing purposes.
 
@@ -145,4 +147,6 @@ This library is not endorsed or supported by LinkedIn. It is an unofficial libra
 
 MIT © [Travis Fischer](https://x.com/transitive_bs)
 
-This package is a TypeScript port / rewrite of the popular [Python linkedin-api](https://github.com/tomquirk/linkedin-api).
+This package is a TypeScript port of the popular [Python linkedin-api](https://github.com/tomquirk/linkedin-api).
+
+If you found this project helpful, please consider starring it and [following me on Twitter](https://x.com/transitive_bs).
