@@ -1,5 +1,5 @@
 {
-  "name": "linkedin-api",
+  "name": "linkedin-api-fetch",
   "version": "0.1.0",
   "description": "TypeScript client for LinkedIn's unofficial API.",
   "author": "Travis Fischer <travis@transitivebullsh.it>",
