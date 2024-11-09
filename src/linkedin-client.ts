@@ -61,6 +61,7 @@ export class LinkedInClient {
 
   protected authKy: KyInstance
   protected apiKy: KyInstance
+  protected debug: boolean
 
   protected _cookies?: Record<string, SetCookie>
   protected _sessionId?: string
@@ -74,6 +75,7 @@ export class LinkedInClient {
     baseUrl = 'https://www.linkedin.com',
     ky = defaultKy,
     throttle = true,
+    debug = false,
     apiHeaders = {},
     authHeaders = {}
   }: {
@@ -82,6 +84,7 @@ export class LinkedInClient {
     baseUrl?: string
     ky?: KyInstance
     throttle?: boolean
+    debug?: boolean
     apiHeaders?: Record<string, string>
     authHeaders?: Record<string, string>
   } = {}) {
@@ -97,6 +100,7 @@ export class LinkedInClient {
     this.email = email
     this.password = password
     this.config = getConfigForUser(email)
+    this.debug = !!debug
 
     this.authKy = ky.extend({
       prefixUrl: baseUrl,
@@ -235,6 +239,9 @@ export class LinkedInClient {
     const res = await this.authKy.get('uas/authenticate')
     const cookieString = res.headers.get('set-cookie')
     assert(cookieString)
+    if (this.debug) {
+      console.log('GET uas/authenticate', res)
+    }
 
     return cookieString
   }
@@ -302,6 +309,10 @@ export class LinkedInClient {
           'content-type': 'application/x-www-form-urlencoded'
         }
       })
+
+      if (this.debug && res.status !== 200) {
+        console.log('POST uas/authenticate', res)
+      }
 
       if (res.status === 401) {
         throw new Error(

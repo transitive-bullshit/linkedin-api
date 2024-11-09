@@ -12,7 +12,7 @@ describe('LinkedInClient', () => {
   beforeAll(async () => {
     linkedin = new LinkedInClient({
       ky: ky.extend({
-        dispatcher: new EnvHttpProxyAgent()
+        dispatcher: new EnvHttpProxyAgent() as any
       })
     })
 
@@ -22,7 +22,7 @@ describe('LinkedInClient', () => {
   test(
     'getMe()',
     {
-      timeout: 10_000
+      timeout: 30_000
     },
     async () => {
       const res = await linkedin.getMe()
@@ -35,7 +35,7 @@ describe('LinkedInClient', () => {
   test(
     "getProfile('fisch2')",
     {
-      timeout: 10_000
+      timeout: 30_000
     },
     async () => {
       const res = await linkedin.getProfile('fisch2')
@@ -48,7 +48,7 @@ describe('LinkedInClient', () => {
   test(
     "getProfileExperiences('fisch2')",
     {
-      timeout: 10_000
+      timeout: 30_000
     },
     async () => {
       const res = await linkedin.getProfileExperiences(
@@ -61,7 +61,7 @@ describe('LinkedInClient', () => {
   test(
     "getSchool('brown-university')",
     {
-      timeout: 10_000
+      timeout: 30_000
     },
     async () => {
       const res = await linkedin.getSchool('brown-university')
@@ -73,7 +73,7 @@ describe('LinkedInClient', () => {
   test(
     "getCompany('microsoft')",
     {
-      timeout: 10_000
+      timeout: 30_000
     },
     async () => {
       const res = await linkedin.getCompany('microsoft')

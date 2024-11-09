@@ -11,12 +11,13 @@ import { LinkedInClient } from '../src'
 async function main() {
   const linkedin = new LinkedInClient({
     ky: ky.extend({
-      dispatcher: new EnvHttpProxyAgent()
-    })
+      dispatcher: new EnvHttpProxyAgent() as any
+    }),
+    debug: true
   })
 
   // await linkedin.authenticate()
-  // console.log(linkedin.config.path)
+  console.log(linkedin.config.path)
 
   const res = await linkedin.getProfile('fisch2')
   // const res = await linkedin.getProfileExperiences(
