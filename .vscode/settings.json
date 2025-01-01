@@ -1,0 +1,8 @@
+{
+    "jest.rootPath": "",
+    "jest.runMode": {
+        "type": "on-demand",
+        "coverage": true
+      },
+      "jest.jestCommandLine": ""
+}

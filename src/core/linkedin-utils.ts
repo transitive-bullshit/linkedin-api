@@ -9,8 +9,8 @@ import type {
   RawOrganization,
   ShowcasePage,
   VectorImage
-} from './types'
-import { assert, omit } from './utils'
+} from '../types/index.js'
+import { assert, omit } from '../utils/utils.js'
 
 /**
  * Return the ID of a given Linkedin URN.
